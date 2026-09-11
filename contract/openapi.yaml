@@ -1,0 +1,1816 @@
+openapi: 3.1.0
+info:
+  title: SmartForge API
+  version: 1.0.0
+  description: >
+    API REST para SmartForge MVP - Entrenador personal digital con generación
+    inteligente de mesociclos auto-periodizados, auditoría de fatiga y dolor articular,
+    y sobrecarga progresiva basada en evidencia.
+  contact:
+    name: SmartForge Team
+  license:
+    name: Proprietary
+    identifier: UNLICENSED
+servers:
+  - url: http://localhost:4000/api
+    description: Servidor de desarrollo local
+tags:
+  - name: Auth
+    description: Autenticación OAuth con Google y verificación JWT
+  - name: Profile
+    description: Gestión del perfil del atleta y equipamiento disponible
+  - name: Exercises
+    description: Catálogo de ejercicios, alternativas y videos demostrativos
+  - name: Mesocycles
+    description: Generación, consulta y rotación de mesociclos
+  - name: Routines
+    description: Edición de rutinas y sustitución de ejercicios
+  - name: Sessions
+    description: Check-in pre-entreno, registro de series y reporte de molestias
+  - name: Progression
+    description: Cálculo de sobrecarga progresiva y ajustes por fatiga
+  - name: Sync
+    description: Sincronización offline de datos
+
+paths:
+  /health:
+    get:
+      summary: Healthcheck del sistema
+      description: Retorna el estado operativo de la API.
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Servicio operativo
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - timestamp
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /auth/google:
+    get:
+      tags:
+        - Auth
+      summary: Iniciar flujo de autenticación OAuth con Google
+      description: Redirige al consent screen de Google OAuth 2.0.
+      operationId: startGoogleAuth
+      security: []
+      responses:
+        '302':
+          description: Redirección al proveedor de identidad de Google.
+
+  /auth/google/callback:
+    get:
+      tags:
+        - Auth
+      summary: Callback de Google OAuth
+      description: Procesa el código o token de Google, emite un JWT stateless y verifica si requiere onboarding de perfil.
+      operationId: googleAuthCallback
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Código de autorización de Google OAuth
+      responses:
+        '200':
+          description: Autenticación exitosa.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Token o código de Google inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      summary: Obtener perfil del atleta autenticado
+      description: Retorna los datos del atleta asociado al JWT Bearer token actual.
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Perfil del atleta autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AthleteProfile'
+        '401':
+          description: No autorizado (token ausente, inválido o expirado).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /profile:
+    post:
+      tags:
+        - Profile
+      summary: Crear perfil de atleta (onboarding)
+      description: Registra el perfil inicial del atleta tras autenticarse por primera vez. Todos los campos son obligatorios.
+      operationId: createProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProfileRequest'
+      responses:
+        '201':
+          description: Perfil creado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AthleteProfile'
+        '400':
+          description: Error de validación en los datos (ej. edad menor a 16 años).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '409':
+          description: Conflicto - el atleta ya tiene un perfil creado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Profile
+      summary: Actualizar perfil de atleta
+      description: Actualiza preferencias de entrenamiento o equipamiento del atleta autenticado.
+      operationId: updateProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Perfil actualizado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AthleteProfile'
+        '400':
+          description: Error de validación en los datos a actualizar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Profile
+      summary: Eliminar cuenta de atleta (soft-delete)
+      description: Marca la cuenta del atleta como eliminada conservando historial disociado.
+      operationId: deleteProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cuenta eliminada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - message
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cuenta eliminada correctamente.
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exercises:
+    get:
+      tags:
+        - Exercises
+      summary: Listar ejercicios del catálogo con filtros
+      description: Retorna los ejercicios disponibles filtrados por patrón de movimiento, músculo primario, equipamiento o búsqueda por texto.
+      operationId: listExercises
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: pattern
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MovementPattern'
+          description: Filtrar por patrón de movimiento
+        - name: primary_muscle
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MuscleGroup'
+          description: Filtrar por grupo muscular principal
+        - name: equipment_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar por equipamiento requerido
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Búsqueda por nombre de ejercicio
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Lista de ejercicios obtenida exitosamente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Exercise'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exercises/{id}:
+    get:
+      tags:
+        - Exercises
+      summary: Obtener detalle de un ejercicio
+      description: Retorna los metadatos completos de un ejercicio, instrucciones y URLs de video demostrativo.
+      operationId: getExerciseById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identificador único del ejercicio
+      responses:
+        '200':
+          description: Detalle del ejercicio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Exercise'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ejercicio no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exercises/{id}/alternatives:
+    get:
+      tags:
+        - Exercises
+      summary: Obtener alternativas compatibles para un ejercicio
+      description: Retorna variantes biomecánicamente equivalentes (mismo patrón y músculo primario) filtradas por equipamiento del atleta.
+      operationId: getExerciseAlternatives
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Identificador del ejercicio a sustituir
+        - name: equipment_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filtrar alternativas por equipamiento específico
+      responses:
+        '200':
+          description: Lista de ejercicios alternativos compatibles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExerciseAlternative'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ejercicio no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /mesocycles:
+    post:
+      tags:
+        - Mesocycles
+      summary: Generar un nuevo mesociclo completo
+      description: Genera y persiste un mesociclo auto-periodizado de 4 a 8 semanas con distribución de series, repeticiones y cargas estimadas.
+      operationId: generateMesocycle
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateMesocycleRequest'
+      responses:
+        '201':
+          description: Mesociclo generado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MesocycleDetail'
+        '400':
+          description: Error al generar mesociclo (ej. perfil incompleto o sin equipamiento compatible).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /mesocycles/current:
+    get:
+      tags:
+        - Mesocycles
+      summary: Obtener el mesociclo activo actual
+      description: Retorna la estructura completa del mesociclo en curso con sus semanas, sesiones y ejercicios asignados.
+      operationId: getCurrentMesocycle
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Mesociclo actual obtenido exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MesocycleDetail'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No existe un mesociclo activo para el atleta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /mesocycles/{id}:
+    get:
+      tags:
+        - Mesocycles
+      summary: Obtener el detalle de un mesociclo por ID
+      description: Retorna la información y planificación de un mesociclo específico (activo, completado o archivado).
+      operationId: getMesocycleById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID del mesociclo
+      responses:
+        '200':
+          description: Detalle del mesociclo obtenido exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MesocycleDetail'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Mesociclo no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /assignments/{id}/swap:
+    post:
+      tags:
+        - Routines
+      summary: Reemplazar un ejercicio asignado en la rutina
+      description: Sustituye un ejercicio en la sesión planificada por una alternativa compatible y registra el motivo del cambio.
+      operationId: swapExerciseAssignment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID de la asignación de ejercicio a modificar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwapExerciseRequest'
+      responses:
+        '200':
+          description: Ejercicio sustituido exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExerciseAssignment'
+        '400':
+          description: Alternativa incompatible o datos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Asignación o nuevo ejercicio no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /assignments/{id}/progression:
+    get:
+      tags:
+        - Progression
+      summary: Obtener sugerencia de progresión de carga y repeticiones
+      description: Calcula y retorna la próxima carga y repeticiones sugeridas para el ejercicio según el rendimiento previo y auditoría de fatiga.
+      operationId: getProgressionSuggestion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID de la asignación de ejercicio
+      responses:
+        '200':
+          description: Sugerencia de progresión calculada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProgressionSuggestion'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Asignación de ejercicio no encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions:
+    post:
+      tags:
+        - Sessions
+      summary: Iniciar una sesión de entrenamiento
+      description: Crea una sesión activa vinculada al plan de sesión correspondiente.
+      operationId: createSession
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - session_plan_id
+              properties:
+                session_plan_id:
+                  type: string
+                  format: uuid
+                  example: sp_101e4567-e89b-12d3-a456-426614174000
+      responses:
+        '201':
+          description: Sesión iniciada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSession'
+        '400':
+          description: Error al iniciar sesión.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{id}/checkin:
+    post:
+      tags:
+        - Sessions
+      summary: Enviar check-in pre-sesión de fatiga y dolor articular
+      description: Registra el nivel de fatiga general (1–5) y las articulaciones con molestia (lado e intensidad). Obligatorio antes de registrar series.
+      operationId: submitCheckIn
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID de la sesión de entrenamiento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckInRequest'
+      responses:
+        '201':
+          description: Check-in registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckInResponse'
+        '400':
+          description: Datos de fatiga o articulación inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: El check-in ya fue completado previamente para esta sesión.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{id}/sets:
+    post:
+      tags:
+        - Sessions
+      summary: Registrar una serie realizada
+      description: Guarda los datos de peso, repeticiones completadas y RIR (0–5) de una serie de entrenamiento.
+      operationId: logSet
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID de la sesión de entrenamiento
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSetLogRequest'
+      responses:
+        '201':
+          description: Serie registrada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetLog'
+        '400':
+          description: Datos de la serie inválidos (ej. RIR fuera de rango 0–5 o peso negativo).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sets/{id}:
+    put:
+      tags:
+        - Sessions
+      summary: Editar una serie registrada
+      description: Permite corregir peso, repeticiones o RIR de una serie dentro de la sesión activa.
+      operationId: updateSetLog
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID del registro de serie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSetLogRequest'
+      responses:
+        '200':
+          description: Serie actualizada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetLog'
+        '400':
+          description: Datos de la serie inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Serie no encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      tags:
+        - Sessions
+      summary: Eliminar una serie registrada
+      description: Elimina una serie errónea de la sesión activa.
+      operationId: deleteSetLog
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID del registro de serie
+      responses:
+        '204':
+          description: Serie eliminada exitosamente.
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Serie no encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{id}/pain-reports:
+    post:
+      tags:
+        - Sessions
+      summary: Reportar molestia articular post-ejercicio
+      description: Registra reporte opcional de dolor tras ejecutar un ejercicio específico durante la sesión.
+      operationId: reportExercisePain
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID de la sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePainReportRequest'
+      responses:
+        '201':
+          description: Reporte de molestia registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PainReport'
+        '400':
+          description: Datos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sessions/{id}/complete:
+    patch:
+      tags:
+        - Sessions
+      summary: Marcar sesión de entrenamiento como completada
+      description: Finaliza la sesión activa y gatilla la actualización de rachas y cálculos de sobrecarga.
+      operationId: completeSession
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID de la sesión
+      responses:
+        '200':
+          description: Sesión finalizada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingSession'
+        '400':
+          description: La sesión no puede completarse (ej. ya finalizada).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /sync:
+    post:
+      tags:
+        - Sync
+      summary: Sincronizar por lotes datos registrados offline
+      description: Procesa y persiste un lote mixto de check-ins, series y reportes de dolor registrados en modo offline.
+      operationId: syncOfflineData
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncRequest'
+      responses:
+        '200':
+          description: Sincronización procesada completamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '207':
+          description: Sincronización procesada con advertencias o conflictos resueltos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '400':
+          description: Formato de lote inválido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT generado tras la autenticación con Google OAuth.
+
+  schemas:
+    ExperienceLevel:
+      type: string
+      enum:
+        - principiante
+        - intermedio
+        - avanzado
+      description: Nivel de experiencia del atleta.
+
+    TrainingGoal:
+      type: string
+      enum:
+        - hipertrofia
+        - fuerza
+        - mixto
+      description: Objetivo principal de entrenamiento del atleta.
+
+    PeriodizationType:
+      type: string
+      enum:
+        - lineal
+        - ondulante
+      description: Tipo de periodización aplicada al mesociclo.
+
+    MesocycleStatus:
+      type: string
+      enum:
+        - active
+        - completed
+        - archived
+      description: Estado actual del mesociclo.
+
+    SwapReason:
+      type: string
+      enum:
+        - falta_equipamiento
+        - preferencia_personal
+        - molestia_articular
+      description: Motivo por el cual el atleta solicita sustituir un ejercicio.
+
+    SessionStatus:
+      type: string
+      enum:
+        - in_progress
+        - completed
+        - cancelled
+      description: Estado de la sesión de entrenamiento.
+
+    Joint:
+      type: string
+      enum:
+        - hombro
+        - codo
+        - muneca
+        - columna_lumbar
+        - cadera
+        - rodilla
+        - tobillo
+      description: Articulación evaluada para dolor o fatiga.
+
+    BodySide:
+      type: string
+      enum:
+        - izquierda
+        - derecha
+        - bilateral
+      description: Lado anatómico de la articulación con molestia.
+
+    PainIntensity:
+      type: string
+      enum:
+        - leve
+        - moderada
+        - severa
+      description: Intensidad subjetiva de la molestia articular.
+
+    JointPainItem:
+      type: object
+      required:
+        - joint
+        - side
+        - intensity
+      properties:
+        joint:
+          $ref: '#/components/schemas/Joint'
+        side:
+          $ref: '#/components/schemas/BodySide'
+        intensity:
+          $ref: '#/components/schemas/PainIntensity'
+
+    CheckInRequest:
+      type: object
+      required:
+        - fatigue_level
+        - joint_pains
+      properties:
+        fatigue_level:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 2
+        joint_pains:
+          type: array
+          items:
+            $ref: '#/components/schemas/JointPainItem'
+
+    CheckInResponse:
+      type: object
+      required:
+        - id
+        - session_id
+        - fatigue_level
+        - joint_pains
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        fatigue_level:
+          type: integer
+          minimum: 1
+          maximum: 5
+        joint_pains:
+          type: array
+          items:
+            $ref: '#/components/schemas/JointPainItem'
+        created_at:
+          type: string
+          format: date-time
+
+    CreateSetLogRequest:
+      type: object
+      required:
+        - exercise_id
+        - set_number
+        - reps_completed
+        - weight_kg
+        - rir
+        - client_timestamp
+      properties:
+        exercise_id:
+          type: string
+          example: barbell_bench_press
+        set_number:
+          type: integer
+          minimum: 1
+          example: 1
+        reps_completed:
+          type: integer
+          minimum: 0
+          example: 10
+        weight_kg:
+          type: number
+          minimum: 0
+          example: 60.0
+        rir:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 2
+        client_timestamp:
+          type: string
+          format: date-time
+          example: "2026-09-15T18:30:00.000Z"
+
+    UpdateSetLogRequest:
+      type: object
+      properties:
+        reps_completed:
+          type: integer
+          minimum: 0
+          example: 10
+        weight_kg:
+          type: number
+          minimum: 0
+          example: 62.5
+        rir:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 1
+        client_timestamp:
+          type: string
+          format: date-time
+
+    SetLog:
+      type: object
+      required:
+        - id
+        - session_id
+        - exercise_id
+        - set_number
+        - reps_completed
+        - weight_kg
+        - rir
+        - client_timestamp
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        exercise_id:
+          type: string
+        set_number:
+          type: integer
+        reps_completed:
+          type: integer
+        weight_kg:
+          type: number
+        rir:
+          type: integer
+          minimum: 0
+          maximum: 5
+        client_timestamp:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreatePainReportRequest:
+      type: object
+      required:
+        - exercise_id
+        - joint
+        - side
+        - intensity
+      properties:
+        exercise_id:
+          type: string
+          example: barbell_bench_press
+        joint:
+          $ref: '#/components/schemas/Joint'
+        side:
+          $ref: '#/components/schemas/BodySide'
+        intensity:
+          $ref: '#/components/schemas/PainIntensity'
+        notes:
+          type: string
+          example: Molestia en la porción anterior al descender la barra
+
+    PainReport:
+      type: object
+      required:
+        - id
+        - session_id
+        - exercise_id
+        - joint
+        - side
+        - intensity
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        session_id:
+          type: string
+          format: uuid
+        exercise_id:
+          type: string
+        joint:
+          $ref: '#/components/schemas/Joint'
+        side:
+          $ref: '#/components/schemas/BodySide'
+        intensity:
+          $ref: '#/components/schemas/PainIntensity'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    TrainingSession:
+      type: object
+      required:
+        - id
+        - athlete_id
+        - session_plan_id
+        - status
+        - started_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        athlete_id:
+          type: string
+          format: uuid
+        session_plan_id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        checkin:
+          $ref: '#/components/schemas/CheckInResponse'
+        set_logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetLog'
+        pain_reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/PainReport'
+
+    ProgressionAction:
+      type: string
+      enum:
+        - increase_load
+        - increase_reps
+        - maintain
+        - reduce
+        - deload
+        - initial
+      description: Acción recomendada por el motor de sobrecarga progresiva.
+
+    ProgressionSuggestion:
+      type: object
+      required:
+        - assignment_id
+        - exercise_name
+        - current_load_kg
+        - suggestion
+        - streak_count
+        - window_sessions
+      properties:
+        assignment_id:
+          type: string
+          format: uuid
+        exercise_name:
+          type: string
+          example: Sentadilla con barra
+        current_load_kg:
+          type: number
+          example: 60.0
+        suggestion:
+          type: object
+          required:
+            - action
+            - next_load_kg
+            - next_reps_target
+            - reason
+          properties:
+            action:
+              $ref: '#/components/schemas/ProgressionAction'
+            next_load_kg:
+              type: number
+              example: 65.0
+            next_reps_target:
+              type: integer
+              example: 8
+            reason:
+              type: string
+              example: Completaste todas las series con RIR >= 2 en la última sesión. Se incrementa carga +5 kg.
+        streak_count:
+          type: integer
+          example: 1
+        window_sessions:
+          type: integer
+          example: 3
+
+    SyncRequest:
+      type: object
+      properties:
+        checkins:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckInRequest'
+        sets:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateSetLogRequest'
+        pain_reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreatePainReportRequest'
+
+    SyncResponse:
+      type: object
+      required:
+        - processed_count
+        - conflicts_count
+        - synced_at
+      properties:
+        processed_count:
+          type: integer
+          example: 12
+        conflicts_count:
+          type: integer
+          example: 0
+        errors:
+          type: array
+          items:
+            type: string
+        synced_at:
+          type: string
+          format: date-time
+
+    MovementPattern:
+      type: string
+      enum:
+        - empuje
+        - tiron
+        - rodilla_dominante
+        - cadera_dominante
+        - core
+      description: Patrón de movimiento biomecánico principal.
+
+    MuscleGroup:
+      type: string
+      enum:
+        - pecho
+        - espalda
+        - cuadriceps
+        - isquiosurales
+        - gluteos
+        - hombros
+        - biceps
+        - triceps
+        - pantorrillas
+        - core
+      description: Grupo muscular primario o secundario.
+
+    EquipmentItem:
+      type: object
+      required:
+        - id
+        - name
+        - category
+      properties:
+        id:
+          type: string
+          example: barbell
+        name:
+          type: string
+          example: Barra olímpica
+        category:
+          type: string
+          example: free_weights
+
+    Exercise:
+      type: object
+      required:
+        - id
+        - name
+        - movement_pattern
+        - primary_muscle
+        - secondary_muscles
+        - equipment_id
+        - is_compound
+        - initial_load_ratio
+        - video_url
+        - video_fallback_url
+        - instructions
+        - is_active
+      properties:
+        id:
+          type: string
+          example: barbell_bench_press
+        name:
+          type: string
+          example: Press de banca con barra
+        movement_pattern:
+          $ref: '#/components/schemas/MovementPattern'
+        primary_muscle:
+          $ref: '#/components/schemas/MuscleGroup'
+        secondary_muscles:
+          type: array
+          items:
+            $ref: '#/components/schemas/MuscleGroup'
+        equipment_id:
+          type: string
+          example: barbell
+        is_compound:
+          type: boolean
+          example: true
+        initial_load_ratio:
+          type: number
+          description: Ratio sobre peso corporal para estimar carga inicial en principiantes
+          example: 0.50
+        video_url:
+          type: string
+          format: uri
+          example: https://assets.smartforge.app/videos/barbell_bench_press.mp4
+        video_fallback_url:
+          type: string
+          format: uri
+          example: https://assets.smartforge.app/fallbacks/barbell_bench_press.webp
+        instructions:
+          type: string
+          example: Apoya firmemente los pies, retrae escápulas y desciende la barra al esternón controladamente.
+        is_active:
+          type: boolean
+          example: true
+
+    ExerciseAlternative:
+      type: object
+      required:
+        - original_exercise_id
+        - alternative_exercise
+        - similarity_score
+      properties:
+        original_exercise_id:
+          type: string
+          example: barbell_bench_press
+        alternative_exercise:
+          $ref: '#/components/schemas/Exercise'
+        similarity_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.95
+
+    ExerciseAssignment:
+      type: object
+      required:
+        - id
+        - session_plan_id
+        - exercise_id
+        - exercise
+        - order_in_session
+        - target_sets
+        - target_reps
+        - target_rir
+        - target_load_kg
+        - is_swapped
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: ea_101e4567-e89b-12d3-a456-426614174000
+        session_plan_id:
+          type: string
+          format: uuid
+          example: sp_101e4567-e89b-12d3-a456-426614174000
+        exercise_id:
+          type: string
+          example: barbell_bench_press
+        exercise:
+          $ref: '#/components/schemas/Exercise'
+        order_in_session:
+          type: integer
+          example: 1
+        target_sets:
+          type: integer
+          example: 4
+        target_reps:
+          type: integer
+          example: 10
+        target_rir:
+          type: integer
+          minimum: 0
+          maximum: 5
+          example: 2
+        target_load_kg:
+          type: number
+          example: 60.0
+        notes:
+          type: string
+          example: Mantener tempo 2-0-1
+        is_swapped:
+          type: boolean
+          example: false
+
+    SessionPlan:
+      type: object
+      required:
+        - id
+        - week_plan_id
+        - day_number
+        - name
+        - exercise_assignments
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: sp_101e4567-e89b-12d3-a456-426614174000
+        week_plan_id:
+          type: string
+          format: uuid
+          example: wp_101e4567-e89b-12d3-a456-426614174000
+        day_number:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 1
+        name:
+          type: string
+          example: Día 1 - Torso Pesado (Empuje / Tirón)
+        exercise_assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExerciseAssignment'
+
+    WeekPlan:
+      type: object
+      required:
+        - id
+        - mesocycle_id
+        - week_number
+        - is_deload
+        - sessions
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: wp_101e4567-e89b-12d3-a456-426614174000
+        mesocycle_id:
+          type: string
+          format: uuid
+          example: meso_101e4567-e89b-12d3-a456-426614174000
+        week_number:
+          type: integer
+          minimum: 1
+          maximum: 8
+          example: 1
+        is_deload:
+          type: boolean
+          example: false
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionPlan'
+
+    MesocycleDetail:
+      type: object
+      required:
+        - id
+        - athlete_id
+        - name
+        - experience_level
+        - training_goal
+        - periodization_type
+        - duration_weeks
+        - status
+        - start_date
+        - weeks
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: meso_101e4567-e89b-12d3-a456-426614174000
+        athlete_id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        name:
+          type: string
+          example: Mesociclo 1 - Hipertrofia Ondulante
+        experience_level:
+          $ref: '#/components/schemas/ExperienceLevel'
+        training_goal:
+          $ref: '#/components/schemas/TrainingGoal'
+        periodization_type:
+          $ref: '#/components/schemas/PeriodizationType'
+        duration_weeks:
+          type: integer
+          minimum: 4
+          maximum: 8
+          example: 6
+        status:
+          $ref: '#/components/schemas/MesocycleStatus'
+        start_date:
+          type: string
+          format: date
+          example: "2026-09-15"
+        end_date:
+          type: string
+          format: date
+          example: "2026-10-27"
+        weeks:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekPlan'
+
+    GenerateMesocycleRequest:
+      type: object
+      properties:
+        target_goal:
+          $ref: '#/components/schemas/TrainingGoal'
+        custom_duration_weeks:
+          type: integer
+          minimum: 4
+          maximum: 8
+
+    SwapExerciseRequest:
+      type: object
+      required:
+        - new_exercise_id
+        - reason
+      properties:
+        new_exercise_id:
+          type: string
+          example: dumbbell_bench_press
+        reason:
+          $ref: '#/components/schemas/SwapReason'
+        notes:
+          type: string
+          example: Barra ocupada en hora pico
+
+    AthleteProfile:
+      type: object
+      required:
+        - id
+        - google_id
+        - email
+        - name
+        - age
+        - weight_kg
+        - experience_level
+        - training_goal
+        - available_days_per_week
+        - equipment
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+        google_id:
+          type: string
+          example: "109876543210987654321"
+        email:
+          type: string
+          format: email
+          example: atleta@example.com
+        name:
+          type: string
+          example: Juan Pérez
+        age:
+          type: integer
+          minimum: 16
+          example: 25
+        weight_kg:
+          type: number
+          minimum: 20
+          maximum: 300
+          example: 78.5
+        experience_level:
+          $ref: '#/components/schemas/ExperienceLevel'
+        training_goal:
+          $ref: '#/components/schemas/TrainingGoal'
+        available_days_per_week:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 4
+        equipment:
+          type: array
+          items:
+            $ref: '#/components/schemas/EquipmentItem'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProfileRequest:
+      type: object
+      required:
+        - name
+        - age
+        - weight_kg
+        - experience_level
+        - training_goal
+        - available_days_per_week
+        - equipment_ids
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Juan Pérez
+        age:
+          type: integer
+          minimum: 16
+          maximum: 120
+          example: 25
+        weight_kg:
+          type: number
+          minimum: 20
+          maximum: 300
+          example: 78.5
+        experience_level:
+          $ref: '#/components/schemas/ExperienceLevel'
+        training_goal:
+          $ref: '#/components/schemas/TrainingGoal'
+        available_days_per_week:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 4
+        equipment_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example:
+            - barbell
+            - dumbbells
+            - power_rack
+            - flat_bench
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Juan Pérez
+        weight_kg:
+          type: number
+          minimum: 20
+          maximum: 300
+          example: 80.0
+        experience_level:
+          $ref: '#/components/schemas/ExperienceLevel'
+        training_goal:
+          $ref: '#/components/schemas/TrainingGoal'
+        available_days_per_week:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 5
+        equipment_ids:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example:
+            - barbell
+            - dumbbells
+
+    AuthResponse:
+      type: object
+      required:
+        - token
+        - is_profile_complete
+      properties:
+        token:
+          type: string
+          description: Token JWT stateless para autorizar subsiguientes peticiones.
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        is_profile_complete:
+          type: boolean
+          description: Indica si el atleta ya completó el formulario de onboarding.
+          example: true
+        profile:
+          $ref: '#/components/schemas/AthleteProfile'
+
+    ErrorDetail:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+          description: Nombre del campo que causó el error de validación
+          example: age
+        message:
+          type: string
+          description: Mensaje descriptivo del error en español
+          example: La edad mínima requerida para entrenar es 16 años.
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - code
+      properties:
+        error:
+          type: string
+          description: Descripción legible del error en español
+          example: Recurso no encontrado o no disponible.
+        code:
+          type: string
+          description: Código interno de error
+          example: NOT_FOUND
+
+    ValidationErrorResponse:
+      type: object
+      required:
+        - error
+        - code
+        - details
+      properties:
+        error:
+          type: string
+          description: Descripción general del error de validación en español
+          example: Los datos enviados no son válidos.
+        code:
+          type: string
+          description: Código de error de validación
+          example: VALIDATION_ERROR
+        details:
+          type: array
+          description: Lista de errores por campo
+          items:
+            $ref: '#/components/schemas/ErrorDetail'

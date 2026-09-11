@@ -1,0 +1,267 @@
+/**
+ * AUTO-GENERATED FILE FROM contract/openapi.yaml. DO NOT EDIT DIRECTLY.
+ * Source of truth: Constitution §1, RNF-07.
+ */
+export type ExperienceLevel = 'principiante' | 'intermedio' | 'avanzado';
+
+export type TrainingGoal = 'hipertrofia' | 'fuerza' | 'mixto';
+
+export type PeriodizationType = 'lineal' | 'ondulante';
+
+export type MesocycleStatus = 'active' | 'completed' | 'archived';
+
+export type SwapReason = 'falta_equipamiento' | 'preferencia_personal' | 'molestia_articular';
+
+export type SessionStatus = 'in_progress' | 'completed' | 'cancelled';
+
+export type Joint = 'hombro' | 'codo' | 'muneca' | 'columna_lumbar' | 'cadera' | 'rodilla' | 'tobillo';
+
+export type BodySide = 'izquierda' | 'derecha' | 'bilateral';
+
+export type PainIntensity = 'leve' | 'moderada' | 'severa';
+
+export type JointPainItem = {
+  joint: Joint;
+  side: BodySide;
+  intensity: PainIntensity;
+};
+
+export type CheckInRequest = {
+  fatigue_level: number;
+  joint_pains: JointPainItem[];
+};
+
+export type CheckInResponse = {
+  id: string;
+  session_id: string;
+  fatigue_level: number;
+  joint_pains: JointPainItem[];
+  created_at: string;
+};
+
+export type CreateSetLogRequest = {
+  exercise_id: string;
+  set_number: number;
+  reps_completed: number;
+  weight_kg: number;
+  rir: number;
+  client_timestamp: string;
+};
+
+export type UpdateSetLogRequest = {
+  reps_completed?: number;
+  weight_kg?: number;
+  rir?: number;
+  client_timestamp?: string;
+};
+
+export type SetLog = {
+  id: string;
+  session_id: string;
+  exercise_id: string;
+  set_number: number;
+  reps_completed: number;
+  weight_kg: number;
+  rir: number;
+  client_timestamp: string;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type CreatePainReportRequest = {
+  exercise_id: string;
+  joint: Joint;
+  side: BodySide;
+  intensity: PainIntensity;
+  notes?: string;
+};
+
+export type PainReport = {
+  id: string;
+  session_id: string;
+  exercise_id: string;
+  joint: Joint;
+  side: BodySide;
+  intensity: PainIntensity;
+  notes?: string;
+  created_at: string;
+};
+
+export type TrainingSession = {
+  id: string;
+  athlete_id: string;
+  session_plan_id: string;
+  status: SessionStatus;
+  started_at: string;
+  completed_at?: string;
+  checkin?: CheckInResponse;
+  set_logs?: SetLog[];
+  pain_reports?: PainReport[];
+};
+
+export type ProgressionAction = 'increase_load' | 'increase_reps' | 'maintain' | 'reduce' | 'deload' | 'initial';
+
+export type ProgressionSuggestion = {
+  assignment_id: string;
+  exercise_name: string;
+  current_load_kg: number;
+  suggestion: Record<string, unknown>;
+  streak_count: number;
+  window_sessions: number;
+};
+
+export type SyncRequest = {
+  checkins?: CheckInRequest[];
+  sets?: CreateSetLogRequest[];
+  pain_reports?: CreatePainReportRequest[];
+};
+
+export type SyncResponse = {
+  processed_count: number;
+  conflicts_count: number;
+  errors?: string[];
+  synced_at: string;
+};
+
+export type MovementPattern = 'empuje' | 'tiron' | 'rodilla_dominante' | 'cadera_dominante' | 'core';
+
+export type MuscleGroup = 'pecho' | 'espalda' | 'cuadriceps' | 'isquiosurales' | 'gluteos' | 'hombros' | 'biceps' | 'triceps' | 'pantorrillas' | 'core';
+
+export type EquipmentItem = {
+  id: string;
+  name: string;
+  category: string;
+};
+
+export type Exercise = {
+  id: string;
+  name: string;
+  movement_pattern: MovementPattern;
+  primary_muscle: MuscleGroup;
+  secondary_muscles: MuscleGroup[];
+  equipment_id: string;
+  is_compound: boolean;
+  initial_load_ratio: number;
+  video_url: string;
+  video_fallback_url: string;
+  instructions: string;
+  is_active: boolean;
+};
+
+export type ExerciseAlternative = {
+  original_exercise_id: string;
+  alternative_exercise: Exercise;
+  similarity_score: number;
+};
+
+export type ExerciseAssignment = {
+  id: string;
+  session_plan_id: string;
+  exercise_id: string;
+  exercise: Exercise;
+  order_in_session: number;
+  target_sets: number;
+  target_reps: number;
+  target_rir: number;
+  target_load_kg: number;
+  notes?: string;
+  is_swapped: boolean;
+};
+
+export type SessionPlan = {
+  id: string;
+  week_plan_id: string;
+  day_number: number;
+  name: string;
+  exercise_assignments: ExerciseAssignment[];
+};
+
+export type WeekPlan = {
+  id: string;
+  mesocycle_id: string;
+  week_number: number;
+  is_deload: boolean;
+  sessions: SessionPlan[];
+};
+
+export type MesocycleDetail = {
+  id: string;
+  athlete_id: string;
+  name: string;
+  experience_level: ExperienceLevel;
+  training_goal: TrainingGoal;
+  periodization_type: PeriodizationType;
+  duration_weeks: number;
+  status: MesocycleStatus;
+  start_date: string;
+  end_date?: string;
+  weeks: WeekPlan[];
+};
+
+export type GenerateMesocycleRequest = {
+  target_goal?: TrainingGoal;
+  custom_duration_weeks?: number;
+};
+
+export type SwapExerciseRequest = {
+  new_exercise_id: string;
+  reason: SwapReason;
+  notes?: string;
+};
+
+export type AthleteProfile = {
+  id: string;
+  google_id: string;
+  email: string;
+  name: string;
+  age: number;
+  weight_kg: number;
+  experience_level: ExperienceLevel;
+  training_goal: TrainingGoal;
+  available_days_per_week: number;
+  equipment: EquipmentItem[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateProfileRequest = {
+  name: string;
+  age: number;
+  weight_kg: number;
+  experience_level: ExperienceLevel;
+  training_goal: TrainingGoal;
+  available_days_per_week: number;
+  equipment_ids: string[];
+};
+
+export type UpdateProfileRequest = {
+  name?: string;
+  weight_kg?: number;
+  experience_level?: ExperienceLevel;
+  training_goal?: TrainingGoal;
+  available_days_per_week?: number;
+  equipment_ids?: string[];
+};
+
+export type AuthResponse = {
+  token: string;
+  is_profile_complete: boolean;
+  profile?: AthleteProfile;
+};
+
+export type ErrorDetail = {
+  field: string;
+  message: string;
+};
+
+export type ErrorResponse = {
+  error: string;
+  code: string;
+};
+
+export type ValidationErrorResponse = {
+  error: string;
+  code: string;
+  details: ErrorDetail[];
+};
+
