@@ -26,7 +26,14 @@ export class AuthController {
       }
 
       const authResponse = await this.service.handleGoogleAuth(codeOrToken);
-      res.status(200).json(authResponse);
+
+      // Redirect back to the frontend SPA with the token as query params
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const params = new URLSearchParams({
+        token: authResponse.token,
+        is_profile_complete: String(authResponse.is_profile_complete)
+      });
+      res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
     } catch (err) {
       next(err);
     }
@@ -34,12 +41,16 @@ export class AuthController {
 
   me = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const athleteId = req.athlete?.id;
-      if (!athleteId) {
+      if (!req.athlete) {
         throw new UnauthorizedError('No autorizado.');
       }
 
-      const athlete = await this.service.getCurrentUser(athleteId);
+      const athlete = await this.service.getCurrentUser({
+        id: req.athlete.id,
+        google_id: req.athlete.google_id,
+        email: req.athlete.email
+      });
+
       res.status(200).json(athlete);
     } catch (err) {
       next(err);

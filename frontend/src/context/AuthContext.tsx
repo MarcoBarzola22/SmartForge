@@ -30,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTokenState(null);
       setUser(null);
       setIsProfileComplete(false);
+      setIsLoading(false);
       return;
     }
 
@@ -48,12 +49,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setIsProfileComplete(false);
       } else {
-        // Token invalid or expired
+        // Token invalid or expired: clean up session quietly
         setAuthToken(null);
         setTokenState(null);
         setUser(null);
         setIsProfileComplete(false);
-        setError(err?.message || 'Sesión expirada o inválida');
       }
     } finally {
       setIsLoading(false);
@@ -61,6 +61,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
+    // Handle OAuth callback: capture token from URL when redirected back from Google
+    const url = new URL(window.location.href);
+    const tokenFromCallback = url.searchParams.get('token');
+    const profileCompleteParam = url.searchParams.get('is_profile_complete');
+
+    if (tokenFromCallback) {
+      // Store the token and clean up the URL
+      setAuthToken(tokenFromCallback);
+      setTokenState(tokenFromCallback);
+
+      if (profileCompleteParam === 'false') {
+        setIsProfileComplete(false);
+        setIsLoading(false);
+      }
+
+      // Remove query params from URL without reloading
+      window.history.replaceState({}, '', '/');
+    }
+
     restoreSession();
   }, [restoreSession]);
 
@@ -68,10 +87,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     setError(null);
     try {
-      const apiBase =
-        (typeof import.meta !== 'undefined' &&
-          (import.meta as any).env?.VITE_API_BASE_URL) ||
-        '/api';
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
       window.location.href = `${apiBase}/auth/google`;
     } catch (err: any) {
       setIsLoading(false);

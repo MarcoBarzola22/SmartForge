@@ -67,12 +67,7 @@ export class ApiClientError extends Error {
 }
 
 const getApiBaseUrl = (): string => {
-  try {
-    const metaEnv = (import.meta as unknown as { env?: Record<string, string> })?.env;
-    return metaEnv?.VITE_API_BASE_URL || '/api';
-  } catch {
-    return '/api';
-  }
+  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
 };
 
 interface RequestOptions extends RequestInit {

@@ -76,14 +76,16 @@ export async function verifyGoogleIdToken(
   }
 }
 
+import { athleteRepository } from '../repositories/athlete.repository.js';
+
 /**
  * Middleware Express para proteger rutas que requieren autenticación Bearer JWT.
  */
-export function authenticate(
+export async function authenticate(
   req: Request,
   _res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
 
@@ -103,8 +105,18 @@ export function authenticate(
       throw new UnauthorizedError('Token JWT inválido: campos requeridos ausentes.');
     }
 
+    let athleteId = String(decoded.id || decoded.sub || '');
+    if (!athleteId) {
+      const athlete =
+        (await athleteRepository.findByGoogleId(decoded.google_id)) ||
+        (await athleteRepository.findByEmail(decoded.email));
+      if (athlete) {
+        athleteId = athlete.id;
+      }
+    }
+
     req.athlete = {
-      id: String(decoded.id || decoded.sub || ''),
+      id: athleteId,
       email: String(decoded.email),
       google_id: String(decoded.google_id),
       name: decoded.name ? String(decoded.name) : undefined
@@ -129,11 +141,11 @@ export function authenticate(
  * Si el token está presente, lo valida y asigna req.athlete.
  * Si no está presente, continúa sin error.
  */
-export function optionalAuthenticate(
+export async function optionalAuthenticate(
   req: Request,
   _res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return next();
@@ -149,8 +161,18 @@ export function optionalAuthenticate(
     const decoded = jwt.verify(token, secret) as jwt.JwtPayload;
 
     if (decoded && decoded.email && decoded.google_id) {
+      let athleteId = String(decoded.id || decoded.sub || '');
+      if (!athleteId) {
+        const athlete =
+          (await athleteRepository.findByGoogleId(decoded.google_id)) ||
+          (await athleteRepository.findByEmail(decoded.email));
+        if (athlete) {
+          athleteId = athlete.id;
+        }
+      }
+
       req.athlete = {
-        id: String(decoded.id || decoded.sub || ''),
+        id: athleteId,
         email: String(decoded.email),
         google_id: String(decoded.google_id),
         name: decoded.name ? String(decoded.name) : undefined

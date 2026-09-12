@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App';
 import { QueryProvider } from './api/QueryProvider';
+import { AuthProvider } from './context/AuthContext';
 import { registerServiceWorker } from './sw/registerServiceWorker';
 import './index.css';
 
@@ -10,7 +11,9 @@ if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <QueryProvider>
-        <App />
+        <AuthProvider>
+          <App />
+        </AuthProvider>
       </QueryProvider>
     </React.StrictMode>
   );

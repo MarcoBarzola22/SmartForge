@@ -17,6 +17,12 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class ProfileNotFoundError extends AppError {
+  constructor(message = 'Perfil de atleta no encontrado. Complete el onboarding.') {
+    super(404, 'PROFILE_NOT_FOUND', message);
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message = 'El recurso ya existe o genera un conflicto.') {
     super(409, 'CONFLICT', message);
