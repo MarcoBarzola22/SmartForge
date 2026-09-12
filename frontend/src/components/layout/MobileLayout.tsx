@@ -1,5 +1,8 @@
 import React from 'react';
+import { cn } from 'cn';
 import { StatusBar } from './StatusBar';
+import { ToastContainer } from '../ui/Toast';
+import { useVisualViewport } from '../../hooks/useVisualViewport';
 
 export interface MobileLayoutProps {
   children: React.ReactNode;
@@ -8,6 +11,8 @@ export interface MobileLayoutProps {
   isOnline?: boolean;
   headerAction?: React.ReactNode;
   footer?: React.ReactNode;
+  keyboardActionBar?: React.ReactNode;
+  toastContent?: React.ReactNode;
   className?: string;
 }
 
@@ -18,15 +23,19 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   isOnline = true,
   headerAction,
   footer,
+  keyboardActionBar,
+  toastContent,
   className = ''
 }) => {
+  const { isKeyboardOpen, availableHeight } = useVisualViewport(64);
+
   return (
-    <div className="min-h-screen bg-black flex justify-center w-full">
+    <div className="min-h-screen bg-black flex justify-center w-full select-none">
       <div
         data-testid="mobile-container"
-        className="w-full max-w-[390px] min-h-screen bg-zinc-950 text-zinc-100 flex flex-col shadow-2xl relative overflow-x-hidden border-x border-zinc-900/40"
+        className="w-full max-w-[390px] min-h-screen bg-surface-base text-content-primary flex flex-col shadow-2xl relative overflow-x-hidden border-x border-border-subtle"
       >
-        {/* Adaptive Status Bar / Header */}
+        {/* Header contextual simplificado con safe-area */}
         <StatusBar
           title={title}
           subtitle={subtitle}
@@ -34,18 +43,38 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
           rightAction={headerAction}
         />
 
-        {/* Main Content Scrollable Area (Zero Horizontal Scroll) */}
+        {/* Contenedor scrolleable dinámico (1 sola columna vertical, cero scroll horizontal) */}
         <main
-          className={`flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-4 ${className}`}
+          role="main"
+          style={isKeyboardOpen ? { maxHeight: `${availableHeight}px` } : undefined}
+          className={cn(
+            'flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-4 w-full',
+            className
+          )}
         >
           {children}
         </main>
 
-        {/* Bottom Area (Thumb Zone ≤ 60% viewport height for single-hand reach) */}
-        {footer && (
-          <footer className="sticky bottom-0 w-full bg-zinc-900/95 backdrop-blur-md border-t border-zinc-800 z-30">
-            {footer}
-          </footer>
+        {/* ToastContainer integrado a 12px sobre la barra fija (bottom-[76px]) */}
+        {toastContent && (
+          <ToastContainer>
+            {toastContent}
+          </ToastContainer>
+        )}
+
+        {/* Conmutación entre BottomNav/Footer y KeyboardActionBar */}
+        {isKeyboardOpen ? (
+          keyboardActionBar && (
+            <div className="sticky bottom-0 w-full z-40 shrink-0">
+              {keyboardActionBar}
+            </div>
+          )
+        ) : (
+          footer && (
+            <footer className="sticky bottom-0 w-full bg-surface-1/95 backdrop-blur-md border-t border-border-subtle z-30 pb-[env(safe-area-inset-bottom)] shrink-0">
+              {footer}
+            </footer>
+          )
         )}
       </div>
     </div>

@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
-import { Dumbbell, ShieldCheck, Flame, RefreshCw, AlertCircle } from 'lucide-react';
+import { Input } from '../../components/ui/Input';
+import { Dumbbell, ShieldCheck, Flame, RefreshCw, AlertCircle, Mail, Lock } from 'lucide-react';
 
 export interface LoginPageProps {
   onNavigateToApp?: () => void;
@@ -43,8 +44,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     isProfileComplete,
     isLoading,
     error,
-    loginWithGoogle
+    loginWithGoogle,
+    loginWithToken
   } = useAuth();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -56,87 +63,170 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   }, [isAuthenticated, isProfileComplete, onNavigateToApp, onNavigateToOnboarding]);
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setRecoveryNotice(null);
+
+    if (!email.trim() || !password.trim()) {
+      setFormError('Por favor completá tu correo y contraseña');
+      return;
+    }
+
+    // Si se implementa autenticación por credenciales o mock token:
+    if (loginWithToken) {
+      try {
+        await loginWithToken('mock-auth-token', true);
+      } catch (err: any) {
+        setFormError(err?.message || 'Error al iniciar sesión');
+      }
+    }
+  };
+
+  const handleForgotPassword = () => {
+    setRecoveryNotice(
+      'Hemos enviado las instrucciones de recuperación a tu correo electrónico registrado.'
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-black flex justify-center w-full">
-      <div className="w-full max-w-[390px] min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between p-6 shadow-2xl relative overflow-x-hidden border-x border-zinc-900/40">
+    <div className="min-h-screen bg-black flex justify-center w-full select-none">
+      <div
+        data-testid="mobile-container"
+        className="w-full max-w-[390px] min-h-screen bg-surface-base text-content-primary flex flex-col justify-between p-5 shadow-2xl relative overflow-x-hidden border-x border-border-subtle"
+      >
         {/* Brand Header */}
-        <div className="flex flex-col items-center text-center pt-8 space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shadow-xl shadow-amber-500/10">
-            <Dumbbell className="w-10 h-10" />
+        <div className="flex flex-col items-center text-center pt-6 space-y-3">
+          <div className="w-16 h-16 rounded-2xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shadow-xl shadow-brand-primary/10">
+            <Dumbbell className="w-8 h-8" />
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
-              Smart<span className="text-amber-500">Forge</span>
+            <h1 className="text-2xl font-extrabold tracking-tight text-content-primary">
+              Smart<span className="text-brand-primary">Forge</span>
             </h1>
-            <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-primary">
               Entrenador Personal Digital
             </p>
           </div>
 
-          <p className="text-sm text-zinc-400 max-w-[300px] leading-relaxed">
+          <p className="text-xs text-content-secondary max-w-[280px] leading-relaxed">
             Entrenador personal digital con sobrecarga progresiva, auditoría de fatiga y mesociclos autorregulados.
           </p>
         </div>
 
-        {/* Feature Highlights */}
-        <div className="space-y-2.5 py-6">
-          <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-950/60 text-amber-400 border border-amber-800/40 shrink-0">
+        {/* Feature Highlights (Ocultable en viewports muy compactos si es necesario, sin desbordar) */}
+        <div className="space-y-2 py-4">
+          <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-brand-primary/15 text-brand-primary border border-brand-primary/20 shrink-0">
               <Flame className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-zinc-200">Sobrecarga Progresiva</div>
-              <div className="text-[11px] text-zinc-400">Incrementos automáticos por nivel y RIR</div>
+              <div className="text-xs font-bold text-content-primary">Sobrecarga Progresiva</div>
+              <div className="text-[10px] text-content-secondary">Incrementos automáticos por nivel y RIR</div>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 shrink-0">
+          <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-semantic-success/15 text-semantic-success border border-semantic-success/20 shrink-0">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-zinc-200">Auditoría de Dolor Articular</div>
-              <div className="text-[11px] text-zinc-400">Ajuste de volumen y rotación inteligente</div>
+              <div className="text-xs font-bold text-content-primary">Auditoría de Dolor Articular</div>
+              <div className="text-[10px] text-content-secondary">Ajuste de volumen y rotación inteligente</div>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-zinc-900/70 border border-zinc-800/80 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-sky-950/60 text-sky-400 border border-sky-800/40 shrink-0">
+          <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-brand-focus/15 text-brand-focus border border-brand-focus/20 shrink-0">
               <RefreshCw className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-zinc-200">100% Offline en el Gimnasio</div>
-              <div className="text-[11px] text-zinc-400">Sincronización automática en reconexión</div>
+              <div className="text-xs font-bold text-content-primary">100% Offline en el Gimnasio</div>
+              <div className="text-[10px] text-content-secondary">Sincronización automática en reconexión</div>
             </div>
           </div>
         </div>
 
-        {/* Actions & Login Button */}
-        <div className="space-y-4 pb-4">
-          {error && (
-            <div className="p-3 rounded-xl bg-red-950/80 border border-red-800/80 text-red-200 text-xs flex items-center gap-2 text-left">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-              <span>{error}</span>
+        {/* Formulario de Login en 1 Columna Vertical (RF-08, RF-11, RF-14, T-25) */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full pb-4">
+          {(error || formError) && (
+            <div className="p-3 rounded-xl bg-status-error-bg/15 border border-status-error-bg text-semantic-error-text text-xs flex items-center gap-2 text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 text-status-error-bg" />
+              <span>{error || formError}</span>
             </div>
           )}
 
-          <Button
-            variant="secondary"
-            size="lg"
-            fullWidth
-            isLoading={isLoading}
-            onClick={loginWithGoogle}
-            className="bg-white hover:bg-zinc-100 text-zinc-900 font-bold border border-zinc-300 shadow-lg flex items-center justify-center gap-3 min-h-[48px]"
-          >
-            <GoogleIcon className="w-5 h-5 shrink-0" />
-            <span>Continuar con Google</span>
-          </Button>
+          {recoveryNotice && (
+            <div className="p-3 rounded-xl bg-brand-primary/10 border border-brand-primary/30 text-brand-primary text-xs text-left">
+              {recoveryNotice}
+            </div>
+          )}
 
-          <p className="text-[11px] text-zinc-400 text-center leading-tight">
+          <div className="flex flex-col gap-2.5 w-full">
+            <Input
+              label="Correo electrónico"
+              id="email"
+              type="email"
+              placeholder="atleta@smartforge.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              iconLeft={<Mail className="w-4 h-4" />}
+              className="min-h-[48px] touch-target"
+            />
+
+            <Input
+              label="Contraseña"
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              iconLeft={<Lock className="w-4 h-4" />}
+              className="min-h-[48px] touch-target"
+            />
+          </div>
+
+          {/* Botones de acción apilados al 100% (RF-14): Primario arriba, Secundario abajo */}
+          <div className="flex flex-col gap-2 pt-1 w-full">
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              fullWidth
+              isLoading={isLoading}
+              className="min-h-[48px] touch-target font-bold bg-brand-primary text-brand-contrast shadow-lg"
+            >
+              Iniciar Sesión
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              fullWidth
+              isLoading={isLoading}
+              onClick={loginWithGoogle}
+              className="min-h-[48px] touch-target font-semibold flex items-center justify-center gap-2.5"
+            >
+              <GoogleIcon className="w-5 h-5 shrink-0" />
+              <span>Continuar con Google</span>
+            </Button>
+          </div>
+
+          {/* Recuperación de contraseña en zona inferior accesible (RF-04, RF-08) */}
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="touch-target min-h-[48px] px-3 py-2 text-xs font-medium text-content-secondary hover:text-brand-primary transition-colors text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus rounded-xl"
+          >
+            ¿Olvidaste tu contraseña?
+          </button>
+
+          <p className="text-[11px] text-content-disabled text-center leading-tight">
             Al continuar, aceptás el registro y creación de tu perfil de entrenamiento (edad mínima 16 años).
           </p>
-        </div>
+        </form>
       </div>
     </div>
   );

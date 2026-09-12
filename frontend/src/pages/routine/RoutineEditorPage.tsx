@@ -99,10 +99,10 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
   if (isLoading) {
     return (
       <MobileLayout title="Editor de Rutina" subtitle="Cargando sesión..." isOnline={true}>
-        <div className="flex flex-col gap-4 py-4 animate-pulse">
-          <div className="h-24 bg-zinc-900 rounded-2xl border border-zinc-800" />
-          <div className="h-48 bg-zinc-900 rounded-2xl border border-zinc-800" />
-          <div className="h-48 bg-zinc-900 rounded-2xl border border-zinc-800" />
+        <div className="flex flex-col gap-4 py-4 animate-pulse w-full">
+          <div className="h-24 bg-surface-1 rounded-2xl border border-border-subtle" />
+          <div className="h-48 bg-surface-1 rounded-2xl border border-border-subtle" />
+          <div className="h-48 bg-surface-1 rounded-2xl border border-border-subtle" />
         </div>
       </MobileLayout>
     );
@@ -111,14 +111,14 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
   if (!sessionPlan) {
     return (
       <MobileLayout title="Editor de Rutina" subtitle="Sesión no encontrada" isOnline={true}>
-        <div className="flex flex-col items-center justify-center text-center py-12 px-4">
-          <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4 text-zinc-500">
-            <Dumbbell className="w-8 h-8" />
+        <div className="flex flex-col items-center justify-center text-center py-12 px-4 w-full">
+          <div className="w-16 h-16 rounded-2xl bg-surface-1 border border-border-subtle flex items-center justify-center mb-4 text-content-secondary">
+            <Dumbbell className="w-8 h-8 text-brand-primary/60" />
           </div>
-          <h2 className="text-base font-bold text-zinc-100 mb-1">
+          <h2 className="text-base font-bold text-content-primary mb-1">
             Sesión no encontrada
           </h2>
-          <p className="text-xs text-zinc-400 max-w-xs mb-6">
+          <p className="text-xs text-content-secondary max-w-xs mb-6">
             No se pudo localizar la sesión planificada en el mesociclo activo.
           </p>
           {onBack && (
@@ -127,6 +127,7 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
               size="md"
               onClick={onBack}
               iconLeft={<ArrowLeft className="w-4 h-4" />}
+              className="touch-target min-h-[48px]"
             >
               Volver al Mesociclo
             </Button>
@@ -142,7 +143,7 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
       subtitle="Personalización de Ejercicios"
       isOnline={true}
     >
-      <div className="flex flex-col gap-4 pb-8">
+      <div className="flex flex-col gap-4 pb-8 w-full overflow-x-hidden">
         {error && (
           <Toast
             type="error"
@@ -161,20 +162,20 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
 
         {/* Header de la Sesión */}
         <Card>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 w-full">
             <div className="flex items-center justify-between">
-              <Badge variant="amber" size="sm">
+              <Badge variant="brand" size="sm">
                 Día {sessionPlan.day_number}
               </Badge>
-              <span className="text-[11px] text-zinc-400 font-medium">
+              <span className="text-[11px] text-content-secondary font-medium">
                 {sessionPlan.exercise_assignments?.length || 0} ejercicios planificados
               </span>
             </div>
-            <h2 className="text-lg font-bold text-zinc-100 leading-snug">
+            <h2 className="text-lg font-bold text-content-primary leading-snug">
               {sessionPlan.name}
             </h2>
-            <div className="flex items-center gap-1.5 text-xs text-zinc-400 pt-1">
-              <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <div className="flex items-center gap-1.5 text-xs text-content-secondary pt-1">
+              <Info className="w-3.5 h-3.5 text-brand-primary shrink-0" />
               <span>
                 Revisá las cargas objetivo y cambiá ejercicios compatibles sin límite (CA-03.3).
               </span>
@@ -182,8 +183,8 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
           </div>
         </Card>
 
-        {/* Lista de Ejercicios Asignados */}
-        <div className="flex flex-col gap-3">
+        {/* Lista de Ejercicios Asignados en Tarjetas Modulares Apiladas (RF-11, T-24) */}
+        <div className="flex flex-col gap-3.5 w-full">
           {sessionPlan.exercise_assignments?.map((assignment, index) => {
             const ex = assignment.exercise;
             const pattern = ex?.movement_pattern;
@@ -191,21 +192,22 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
             return (
               <div
                 key={assignment.id || index}
-                className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800/90 flex flex-col gap-3.5 shadow-sm transition-all hover:border-zinc-700/80"
+                data-testid="modular-exercise-card"
+                className="p-4 rounded-2xl bg-surface-1 border border-border-subtle flex flex-col gap-3.5 shadow-sm transition-all hover:border-border-interactive w-full"
               >
                 {/* Cabecera del Ejercicio */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2.5">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold shrink-0 mt-0.5">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-lg bg-brand-primary/10 border border-brand-primary/20 text-brand-primary text-xs font-bold shrink-0 mt-0.5">
                       {assignment.order_in_session || index + 1}
                     </span>
                     <div>
-                      <h3 className="text-sm font-bold text-zinc-100 leading-snug">
+                      <h3 className="text-sm font-bold text-content-primary leading-snug">
                         {ex?.name || 'Ejercicio'}
                       </h3>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                         {pattern && (
-                          <Badge variant="default" size="sm">
+                          <Badge variant="brand" size="sm">
                             {patternLabels[pattern] || pattern}
                           </Badge>
                         )}
@@ -224,44 +226,44 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
                   </div>
                 </div>
 
-                {/* Parámetros de Carga y Prescripción */}
-                <div className="grid grid-cols-4 gap-1.5 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-center">
+                {/* Parámetros Modulares de Carga y Prescripción */}
+                <div className="grid grid-cols-2 xs:grid-cols-4 gap-1.5 p-2.5 rounded-xl bg-surface-2 border border-border-interactive/60 text-center w-full">
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-0.5">
-                      <Layers className="w-3 h-3 text-amber-400" />
+                    <div className="flex items-center gap-1 text-[10px] text-content-secondary font-medium uppercase tracking-wider mb-0.5">
+                      <Layers className="w-3 h-3 text-brand-primary" />
                       <span>Series</span>
                     </div>
-                    <span className="text-xs font-bold text-zinc-200">
+                    <span className="text-xs font-bold text-content-primary">
                       {assignment.target_sets} series
                     </span>
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-0.5">
-                      <Repeat className="w-3 h-3 text-amber-400" />
+                    <div className="flex items-center gap-1 text-[10px] text-content-secondary font-medium uppercase tracking-wider mb-0.5">
+                      <Repeat className="w-3 h-3 text-brand-primary" />
                       <span>Reps</span>
                     </div>
-                    <span className="text-xs font-bold text-zinc-200">
+                    <span className="text-xs font-bold text-content-primary">
                       {assignment.target_reps} reps
                     </span>
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-0.5">
-                      <Weight className="w-3 h-3 text-amber-400" />
+                    <div className="flex items-center gap-1 text-[10px] text-content-secondary font-medium uppercase tracking-wider mb-0.5">
+                      <Weight className="w-3 h-3 text-brand-primary" />
                       <span>Carga</span>
                     </div>
-                    <span className="text-xs font-bold text-amber-300">
+                    <span className="text-xs font-bold text-brand-primary font-mono">
                       {assignment.target_load_kg} kg
                     </span>
                   </div>
 
                   <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-1 text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-0.5">
-                      <Flame className="w-3 h-3 text-amber-400" />
+                    <div className="flex items-center gap-1 text-[10px] text-content-secondary font-medium uppercase tracking-wider mb-0.5">
+                      <Flame className="w-3 h-3 text-brand-primary" />
                       <span>RIR</span>
                     </div>
-                    <span className="text-xs font-bold text-zinc-300">
+                    <span className="text-xs font-bold text-content-primary font-mono">
                       RIR {assignment.target_rir}
                     </span>
                   </div>
@@ -270,7 +272,7 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
                 {/* Botón Cambiar Ejercicio (CA-03.3) */}
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="md"
                   fullWidth
                   onClick={() => {
@@ -287,8 +289,11 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
           })}
         </div>
 
-        {/* Acciones de la Rutina */}
-        <div className="pt-2 sticky bottom-4 z-20 flex flex-col gap-2">
+        {/* Acciones de la Rutina Ancladas en Mitad Inferior (RF-04, RF-14, T-24) */}
+        <div
+          data-testid="routine-bottom-actions"
+          className="sticky bottom-0 z-30 w-full bg-surface-1/95 backdrop-blur-md border-t border-border-interactive p-3 flex flex-col gap-2 rounded-t-2xl shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
+        >
           {onStartSession && (
             <Button
               type="button"
@@ -297,7 +302,7 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
               fullWidth
               onClick={() => onStartSession(sessionPlan.id)}
               iconLeft={<Play className="w-5 h-5 fill-current" />}
-              className="shadow-xl"
+              className="shadow-xl min-h-[48px] touch-target font-bold"
             >
               Iniciar Sesión
             </Button>
@@ -311,7 +316,7 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
               fullWidth
               onClick={onAcceptRoutine}
               iconLeft={<CheckCircle className="w-5 h-5" />}
-              className="shadow-xl"
+              className="shadow-xl min-h-[48px] touch-target font-bold"
             >
               Aceptar Rutina
             </Button>
@@ -325,6 +330,7 @@ export const RoutineEditorPage: React.FC<RoutineEditorPageProps> = ({
               fullWidth
               onClick={onBack}
               iconLeft={<ArrowLeft className="w-4 h-4" />}
+              className="min-h-[48px] touch-target text-content-secondary"
             >
               Volver al Mesociclo
             </Button>

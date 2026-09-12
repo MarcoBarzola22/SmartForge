@@ -196,4 +196,64 @@ describe('TASK-63: ProfilePage Onboarding Form (RF-01, CA-01.2, CA-01.4, CA-01.5
       ).toBeInTheDocument();
     });
   });
+
+  describe('T-23: Disposición vertical estricta y navegación secuencial inferior (RF-05, RF-11, RF-14, Constitución R2)', () => {
+    const TOUCH_TARGET_REGEX = /min-h-\[(4[8-9]|[5-9][0-9])px\]|touch-target|h-12|min-h-touch/;
+
+    it('organiza todos los inputs y equipamiento en una sola columna vertical sin clases de columnas múltiples colapsantes', () => {
+      const { container } = renderWithAuth();
+
+      // Ningún contenedor de inputs o equipamiento debe forzar 2 columnas en mobile
+      const multiCols = container.querySelectorAll('.grid-cols-2');
+      expect(multiCols.length).toBe(0);
+
+      // Cero clases de scroll horizontal
+      const horizontalScrollers = container.querySelectorAll('.overflow-x-auto');
+      expect(horizontalScrollers.length).toBe(0);
+    });
+
+    it('incluye el botón de navegación secuencial "Siguiente campo" en la mitad inferior con área táctil >= 48px (RF-05)', () => {
+      renderWithAuth();
+
+      const nextBtn = screen.getByRole('button', { name: /siguiente campo/i });
+      expect(nextBtn).toBeInTheDocument();
+      expect(nextBtn.className).toMatch(TOUCH_TARGET_REGEX);
+
+      const submitBtn = screen.getByRole('button', { name: /Crear Perfil y Generar Mesociclo/i });
+      expect(submitBtn).toBeInTheDocument();
+      expect(submitBtn.className).toMatch(TOUCH_TARGET_REGEX);
+    });
+
+    it('avanza secuencialmente el foco de los campos al pulsar "Siguiente campo" (RF-05 Thumb-Zone Initializer)', async () => {
+      renderWithAuth();
+
+      const nameInput = screen.getByLabelText(/Nombre completo/i);
+      const ageInput = screen.getByLabelText(/Edad/i);
+      const weightInput = screen.getByLabelText(/Peso corporal \(kg\)/i);
+
+      // Empezamos enfocando el primer campo
+      nameInput.focus();
+      expect(document.activeElement).toBe(nameInput);
+
+      // Pulsamos "Siguiente campo" -> debe avanzar a Edad
+      fireEvent.click(screen.getByRole('button', { name: /siguiente campo/i }));
+      expect(document.activeElement).toBe(ageInput);
+
+      // Esperar más de 50ms para superar el debounce del botón (RF-21)
+      await new Promise((resolve) => setTimeout(resolve, 60));
+
+      // Pulsamos "Siguiente campo" -> debe avanzar a Peso corporal
+      fireEvent.click(screen.getByRole('button', { name: /siguiente campo/i }));
+      expect(document.activeElement).toBe(weightInput);
+    });
+
+    it('apila verticalmente las acciones en la mitad inferior para evitar colapsos en 320px (RF-14)', () => {
+      const { container } = renderWithAuth();
+
+      const bottomDock = container.querySelector('[data-testid="profile-bottom-actions"]');
+      expect(bottomDock).toBeInTheDocument();
+      expect(bottomDock?.className).toContain('flex-col');
+    });
+  });
 });
+

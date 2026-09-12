@@ -5,3 +5,5 @@ export * from './Badge';
 export * from './Modal';
 export * from './Slider';
 export * from './Toast';
+export * from './Sheet';
+export * from './AlertDialog';

@@ -215,4 +215,53 @@ describe('TASK-68: CheckInModal - Pre-Session Fatigue & Joint Pain (RF-04, CA-04
       ).toBeInTheDocument();
     });
   });
+
+  describe('T-24: CheckInModal como Bottom Sheet accesible con safe-areas y acciones en mitad inferior (RF-04, RF-16)', () => {
+    const TOUCH_TARGET_REGEX = /min-h-\[(4[8-9]|[5-9][0-9])px\]|touch-target|h-12|min-h-touch/;
+
+    it('se despliega como Bottom Sheet anclado a la base (side="bottom") y respeta safe area', () => {
+      render(
+        <CheckInModal
+          isOpen={true}
+          sessionId="sess-123"
+          onCheckInSuccess={vi.fn()}
+        />
+      );
+
+      const sheetContent = screen.getByTestId('checkin-bottom-sheet');
+      expect(sheetContent).toBeInTheDocument();
+      expect(sheetContent.className).toMatch(/bottom-0/);
+      expect(sheetContent.className).toMatch(/fixed|sticky/);
+    });
+
+    it('aloja la acción principal en la mitad inferior accesible con diana táctil >= 48px (RF-04)', () => {
+      render(
+        <CheckInModal
+          isOpen={true}
+          sessionId="sess-123"
+          onCheckInSuccess={vi.fn()}
+        />
+      );
+
+      const bottomDock = screen.getByTestId('checkin-bottom-actions');
+      expect(bottomDock).toBeInTheDocument();
+
+      const confirmBtn = screen.getByRole('button', { name: /Confirmar Check-in e Iniciar/i });
+      expect(confirmBtn).toBeInTheDocument();
+      expect(confirmBtn.className).toMatch(TOUCH_TARGET_REGEX);
+    });
+
+    it('no contiene clases de scroll horizontal y no desborda en 320px', () => {
+      const { container } = render(
+        <CheckInModal
+          isOpen={true}
+          sessionId="sess-123"
+          onCheckInSuccess={vi.fn()}
+        />
+      );
+
+      const horizontalScrollers = container.querySelectorAll('.overflow-x-auto');
+      expect(horizontalScrollers.length).toBe(0);
+    });
+  });
 });

@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ExerciseCatalogPage } from './ExerciseCatalogPage';
 import { apiClient } from '../../api/client';
 import type { Exercise } from '../../api';
 
-describe('TASK-72: ExerciseCatalogPage - Interactive Exercise Exploration and Filtering (RF-09, CA-09.1)', () => {
+describe('T-22: ExerciseCatalogPage con búsqueda y filtros en mitad inferior (RF-04, RF-05, RF-06, CF-06)', () => {
+  const TOUCH_TARGET_REGEX = /min-h-\[(4[8-9]|[5-9][0-9])px\]|touch-target|h-12|min-h-touch/;
+
   const sampleExercises: Exercise[] = [
     {
       id: 'ex-bench',
@@ -18,7 +21,7 @@ describe('TASK-72: ExerciseCatalogPage - Interactive Exercise Exploration and Fi
       video_url: 'https://youtube.com/watch?v=bench',
       video_fallback_url: 'https://fallback.com/bench',
       instructions: 'Bajar barra al esternón y empujar con fuerza.',
-      is_active: true
+      is_active: true,
     },
     {
       id: 'ex-squat',
@@ -32,7 +35,7 @@ describe('TASK-72: ExerciseCatalogPage - Interactive Exercise Exploration and Fi
       video_url: 'https://youtube.com/watch?v=squat',
       video_fallback_url: 'https://fallback.com/squat',
       instructions: 'Romper paralelo manteniendo torso neutro.',
-      is_active: true
+      is_active: true,
     },
     {
       id: 'ex-pullup',
@@ -46,7 +49,7 @@ describe('TASK-72: ExerciseCatalogPage - Interactive Exercise Exploration and Fi
       video_url: 'https://youtube.com/watch?v=pullup',
       video_fallback_url: 'https://fallback.com/pullup',
       instructions: 'Traccionar hasta superar la barra con la barbilla.',
-      is_active: true
+      is_active: true,
     },
     {
       id: 'ex-curl',
@@ -60,114 +63,152 @@ describe('TASK-72: ExerciseCatalogPage - Interactive Exercise Exploration and Fi
       video_url: 'https://youtube.com/watch?v=curl',
       video_fallback_url: 'https://fallback.com/curl',
       instructions: 'Flexión de codos sin balanceo de cadera.',
-      is_active: true
-    }
+      is_active: true,
+    },
   ];
 
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('should render catalog header, search bar, filter tabs and load exercises from API (RF-09, CA-09.1)', async () => {
-    const listSpy = vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+  describe('1. Cero scroll horizontal y dianas táctiles en zona de pulgar (RF-04, CF-06)', () => {
+    it('renderiza la barra de búsqueda y el disparador de filtros en la mitad inferior fija (sticky/fixed)', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
 
-    render(<ExerciseCatalogPage />);
+      render(<ExerciseCatalogPage />);
 
-    expect(screen.getByRole('heading', { level: 1, name: /Catálogo de Ejercicios/i })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Buscar ejercicio por nombre o músculo/i)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
 
-    await waitFor(() => {
-      expect(listSpy).toHaveBeenCalled();
-      expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      const bottomBar = screen.getByTestId('catalog-search-dock');
+      expect(bottomBar).toBeInTheDocument();
+      expect(bottomBar.className).toMatch(/sticky|fixed/);
+      expect(bottomBar.className).toContain('bottom-0');
+
+      // Botón "Filtrar" accesible >= 48px
+      const filterBtn = screen.getByRole('button', { name: /filtrar/i });
+      expect(filterBtn).toBeInTheDocument();
+      expect(filterBtn.className).toMatch(TOUCH_TARGET_REGEX);
+
+      // Input de búsqueda
+      const searchInput = screen.getByPlaceholderText(/buscar ejercicio/i);
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('la página no contiene clases de scroll horizontal como overflow-x-auto', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+
+      const { container } = render(<ExerciseCatalogPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
+
+      // No debe existir overflow-x-auto en ningún elemento
+      const horizontalScrollers = container.querySelectorAll('.overflow-x-auto');
+      expect(horizontalScrollers.length).toBe(0);
+    });
+
+    it('en viewport estrecho de 320px aplica w-full sin desborde horizontal', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+
+      const container = document.createElement('div');
+      container.style.width = '320px';
+      container.style.maxWidth = '320px';
+      document.body.appendChild(container);
+
+      const { unmount } = render(
+        <div style={{ width: '320px' }}>
+          <ExerciseCatalogPage />
+        </div>,
+        { container }
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
+
+      const mainContainer = container.querySelector('[data-testid="catalog-main"]');
+      expect(mainContainer?.className).toContain('overflow-x-hidden');
+
+      unmount();
+      document.body.removeChild(container);
+    });
+  });
+
+  describe('2. Búsqueda y filtrado interactivo en tiempo real (RF-06, CF-06)', () => {
+    it('filtra ejercicios por texto en tiempo real', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+
+      render(<ExerciseCatalogPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
+
+      const searchInput = screen.getByPlaceholderText(/buscar ejercicio/i);
+      fireEvent.change(searchInput, { target: { value: 'Sentadilla' } });
+
       expect(screen.getByText('Sentadilla Trasera con Barra')).toBeInTheDocument();
+      expect(screen.queryByText('Press de Banca Plano con Barra')).not.toBeInTheDocument();
+    });
+
+    it('abre el FilterBottomSheet y filtra por músculo al aplicar', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+
+      render(<ExerciseCatalogPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
+
+      // Abrir Bottom Sheet de filtros
+      const filterBtn = screen.getByRole('button', { name: /filtrar/i });
+      fireEvent.click(filterBtn);
+
+      // Seleccionar "Espalda" y aplicar
+      const espaldaChip = screen.getByRole('button', { name: /^espalda$/i });
+      fireEvent.click(espaldaChip);
+
+      const applyBtn = screen.getByRole('button', { name: /aplicar filtros/i });
+      fireEvent.click(applyBtn);
+
+      // Debe mostrar sólo dominadas
       expect(screen.getByText('Dominadas Pronas')).toBeInTheDocument();
-      expect(screen.getByText('Curl de Bíceps con Mancuernas')).toBeInTheDocument();
-    });
-  });
-
-  it('should filter exercises interactively in real time when searching by text query', async () => {
-    vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
-
-    render(<ExerciseCatalogPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      expect(screen.queryByText('Press de Banca Plano con Barra')).not.toBeInTheDocument();
+      expect(screen.queryByText('Sentadilla Trasera con Barra')).not.toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/Buscar ejercicio por nombre o músculo/i);
-    fireEvent.change(searchInput, { target: { value: 'Banca' } });
+    it('muestra estado vacío accesible en español cuando no hay coincidencias', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
 
-    expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
-    expect(screen.queryByText('Sentadilla Trasera con Barra')).not.toBeInTheDocument();
-    expect(screen.queryByText('Dominadas Pronas')).not.toBeInTheDocument();
-  });
+      render(<ExerciseCatalogPage />);
 
-  it('should filter exercises by movement pattern tab selection', async () => {
-    vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
 
-    render(<ExerciseCatalogPage />);
+      const searchInput = screen.getByPlaceholderText(/buscar ejercicio/i);
+      fireEvent.change(searchInput, { target: { value: 'Inexistente XYZ' } });
 
-    await waitFor(() => {
-      expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      expect(
+        screen.getByText(/No se encontraron ejercicios/i)
+      ).toBeInTheDocument();
     });
 
-    // Click on "Rodilla dominante" filter button
-    const patternBtn = screen.getByRole('button', { name: /Rodilla dominante/i });
-    fireEvent.click(patternBtn);
+    it('invoca onSelectExercise al pulsar sobre una tarjeta de ejercicio', async () => {
+      vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+      const onSelectSpy = vi.fn();
 
-    expect(screen.getByText('Sentadilla Trasera con Barra')).toBeInTheDocument();
-    expect(screen.queryByText('Press de Banca Plano con Barra')).not.toBeInTheDocument();
-    expect(screen.queryByText('Dominadas Pronas')).not.toBeInTheDocument();
-  });
+      render(<ExerciseCatalogPage onSelectExercise={onSelectSpy} />);
 
-  it('should filter exercises by primary muscle group chip', async () => {
-    vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
+      await waitFor(() => {
+        expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      });
 
-    render(<ExerciseCatalogPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
+      fireEvent.click(screen.getByText('Press de Banca Plano con Barra'));
+      expect(onSelectSpy).toHaveBeenCalledWith(sampleExercises[0]);
     });
-
-    // Filter by "Espalda"
-    const muscleSelect = screen.getByRole('combobox', { name: /Filtrar por músculo/i });
-    fireEvent.change(muscleSelect, { target: { value: 'espalda' } });
-
-    expect(screen.getByText('Dominadas Pronas')).toBeInTheDocument();
-    expect(screen.queryByText('Press de Banca Plano con Barra')).not.toBeInTheDocument();
-    expect(screen.queryByText('Sentadilla Trasera con Barra')).not.toBeInTheDocument();
-  });
-
-  it('should show empty state message when no exercises match search query', async () => {
-    vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
-
-    render(<ExerciseCatalogPage />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
-    });
-
-    const searchInput = screen.getByPlaceholderText(/Buscar ejercicio por nombre o músculo/i);
-    fireEvent.change(searchInput, { target: { value: 'Ejercicio Inexistente XYZ' } });
-
-    expect(screen.getByText(/No se encontraron ejercicios con los filtros seleccionados/i)).toBeInTheDocument();
-  });
-
-  it('should call onSelectExercise callback when user clicks on an exercise card', async () => {
-    vi.spyOn(apiClient.catalog, 'list').mockResolvedValue(sampleExercises);
-    const selectSpy = vi.fn();
-
-    render(<ExerciseCatalogPage onSelectExercise={selectSpy} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Press de Banca Plano con Barra')).toBeInTheDocument();
-    });
-
-    const benchCard = screen.getByText('Press de Banca Plano con Barra').closest('[data-testid="exercise-card"]');
-    expect(benchCard).toBeInTheDocument();
-    if (benchCard) {
-      fireEvent.click(benchCard);
-      expect(selectSpy).toHaveBeenCalledWith(sampleExercises[0]);
-    }
   });
 });

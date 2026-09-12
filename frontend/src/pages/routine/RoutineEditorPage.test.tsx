@@ -229,4 +229,43 @@ describe('TASK-66: RoutineEditorPage - Exercise List & Swap Trigger (RF-03, CA-0
       ).toBeInTheDocument();
     });
   });
+
+  describe('T-24: RoutineEditorPage con tarjetas modulares apiladas y acciones en mitad inferior (RF-04, RF-11, RF-14, Constitución R2)', () => {
+    const TOUCH_TARGET_REGEX = /min-h-\[(4[8-9]|[5-9][0-9])px\]|touch-target|h-12|min-h-touch/;
+
+    it('apila los ejercicios planificados en tarjetas modulares individuales sin scroll horizontal', () => {
+      const { container } = renderComponent();
+
+      const exerciseCards = container.querySelectorAll('[data-testid="modular-exercise-card"]');
+      expect(exerciseCards.length).toBe(2);
+
+      // Cero scroll horizontal
+      const horizontalScrollers = container.querySelectorAll('.overflow-x-auto');
+      expect(horizontalScrollers.length).toBe(0);
+    });
+
+    it('ancla las acciones de la rutina en la mitad inferior fija/sticky apiladas verticalmente con dianas >= 48px (RF-04, RF-14)', () => {
+      const { container } = renderComponent({
+        onStartSession: vi.fn(),
+        onAcceptRoutine: vi.fn(),
+        onBack: vi.fn()
+      });
+
+      const bottomDock = container.querySelector('[data-testid="routine-bottom-actions"]');
+      expect(bottomDock).toBeInTheDocument();
+      expect(bottomDock?.className).toContain('flex-col');
+
+      const startBtn = screen.getByRole('button', { name: /Iniciar Sesión/i });
+      expect(startBtn).toBeInTheDocument();
+      expect(startBtn.className).toMatch(TOUCH_TARGET_REGEX);
+
+      const acceptBtn = screen.getByRole('button', { name: /Aceptar Rutina/i });
+      expect(acceptBtn).toBeInTheDocument();
+      expect(acceptBtn.className).toMatch(TOUCH_TARGET_REGEX);
+
+      const backBtn = screen.getByRole('button', { name: /Volver al Mesociclo/i });
+      expect(backBtn).toBeInTheDocument();
+      expect(backBtn.className).toMatch(TOUCH_TARGET_REGEX);
+    });
+  });
 });

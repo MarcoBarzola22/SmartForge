@@ -5,6 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
 import { Modal } from '../../components/ui/Modal';
+import { KeyboardActionBar } from '../../components/layout/KeyboardActionBar';
 import { EQUIPMENT_TAXONOMY } from '../../constants/equipment';
 import { apiClient } from '../../api/client';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,7 +16,7 @@ import type {
   CreateProfileRequest,
   UpdateProfileRequest
 } from '../../api';
-import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info } from 'lucide-react';
+import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info, ArrowDown } from 'lucide-react';
 
 export interface ProfilePageProps {
   mode?: 'create' | 'edit';
@@ -60,6 +61,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoalChangeModalOpen, setIsGoalChangeModalOpen] = useState(false);
+
+  // Rastreo del índice del campo enfocado para navegación secuencial con el pulgar (RF-05)
+  const activeIndexRef = React.useRef<number>(0);
 
   useEffect(() => {
     if (currentProfile) {
@@ -163,8 +167,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setServerError(null);
     setSuccessMessage(null);
 
@@ -179,6 +183,35 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     await performSave();
   };
 
+  // Navegación secuencial con una mano en la mitad inferior (RF-05 Thumb-Zone Initializer)
+  const handleNextField = () => {
+    const sequence: string[] = [
+      'name',
+      ...(isEditMode ? [] : ['age']),
+      'weight',
+      'experience-section',
+      'goal-section',
+      'days-section',
+      'equipment-section',
+      'submit-btn'
+    ];
+
+    const currentId = document.activeElement?.id;
+    let currentIdx = currentId && sequence.includes(currentId)
+      ? sequence.indexOf(currentId)
+      : activeIndexRef.current;
+
+    const nextIdx = (currentIdx + 1) % sequence.length;
+    activeIndexRef.current = nextIdx;
+
+    const nextTargetId = sequence[nextIdx];
+    const targetEl = document.getElementById(nextTargetId);
+    if (targetEl) {
+      targetEl.focus();
+      targetEl.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   const goalLabels: Record<TrainingGoal, string> = {
     hipertrofia: 'Hipertrofia',
     fuerza: 'Fuerza',
@@ -190,8 +223,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       title={isEditMode ? 'Editar Perfil' : 'Crear Perfil'}
       subtitle={isEditMode ? 'Ajustes de Atleta' : 'Onboarding de Atleta'}
       isOnline={true}
+      keyboardActionBar={
+        <KeyboardActionBar
+          onSave={() => handleSubmit()}
+          onCancel={handleNextField}
+          primaryLabel={isEditMode ? 'Guardar' : 'Crear'}
+          secondaryLabel="Siguiente"
+          isSubmitting={isSubmitting}
+        />
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-6">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-6 w-full overflow-x-hidden">
         {serverError && (
           <Toast
             type="error"
@@ -210,22 +252,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* CA-01.5 Notice in edit mode */}
         {isEditMode && (
-          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-            <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-xs leading-relaxed text-zinc-300">
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-surface-1 border border-border-subtle text-content-secondary">
+            <Info className="w-5 h-5 text-brand-primary shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed text-content-secondary">
               Los cambios de equipamiento y días disponibles se aplican a partir del siguiente mesociclo (ver RF-10).
             </p>
           </div>
         )}
 
-        {/* Datos Personales */}
+        {/* Datos Personales: Disposición estricta en 1 columna vertical (RF-11, Constitución R2) */}
         <Card title="Datos del Atleta">
-          <div className="flex flex-col gap-3.5 pt-1">
+          <div className="flex flex-col gap-3.5 pt-1 w-full">
             <Input
               label="Nombre completo"
               id="name"
               placeholder="Ej. Lucas Barzola"
               value={name}
+              onFocus={() => {
+                activeIndexRef.current = 0;
+              }}
               onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
@@ -234,7 +279,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               iconLeft={<User className="w-4 h-4" />}
             />
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3.5 w-full">
               <Input
                 label="Edad"
                 id="age"
@@ -242,6 +287,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 placeholder="≥ 16"
                 value={age}
                 disabled={isEditMode}
+                onFocus={() => {
+                  activeIndexRef.current = 1;
+                }}
                 onChange={(e) => {
                   setAge(e.target.value);
                   if (errors.age) setErrors((prev) => ({ ...prev, age: '' }));
@@ -257,6 +305,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 step="0.1"
                 placeholder="75.0"
                 value={weightKg}
+                onFocus={() => {
+                  activeIndexRef.current = isEditMode ? 1 : 2;
+                }}
                 onChange={(e) => {
                   setWeightKg(e.target.value);
                   if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
@@ -267,9 +318,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </Card>
 
-        {/* Nivel de Experiencia */}
+        {/* Nivel de Experiencia: Apilado vertical en 1 columna (RF-11) */}
         <Card title="Nivel de experiencia">
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div
+            id="experience-section"
+            tabIndex={-1}
+            className="flex flex-col gap-2 pt-1 w-full outline-none"
+          >
             {(
               [
                 { id: 'principiante', label: 'Principiante', desc: '< 1 año' },
@@ -283,23 +338,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   key={lvl.id}
                   type="button"
                   onClick={() => setExperienceLevel(lvl.id)}
-                  className={`touch-target min-h-[48px] p-2 rounded-xl flex flex-col items-center justify-center text-center border transition-all ${
+                  className={`touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left border transition-all ${
                     isSelected
-                      ? 'bg-amber-500/15 border-amber-500 text-amber-400 font-bold shadow-sm'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                      ? 'bg-brand-primary/15 border-brand-primary text-brand-primary font-bold shadow-sm'
+                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
                   }`}
                 >
-                  <span className="text-xs">{lvl.label}</span>
-                  <span className="text-[10px] text-zinc-400 font-normal">{lvl.desc}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold">{lvl.label}</span>
+                    <span className="text-[10px] text-content-secondary font-normal">{lvl.desc}</span>
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
                 </button>
               );
             })}
           </div>
         </Card>
 
-        {/* Objetivo Principal */}
+        {/* Objetivo Principal: Apilado vertical en 1 columna (RF-11) */}
         <Card title="Objetivo principal">
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div
+            id="goal-section"
+            tabIndex={-1}
+            className="flex flex-col gap-2 pt-1 w-full outline-none"
+          >
             {(
               [
                 { id: 'hipertrofia', label: 'Hipertrofia', icon: Dumbbell },
@@ -314,23 +376,30 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   key={goal.id}
                   type="button"
                   onClick={() => setTrainingGoal(goal.id)}
-                  className={`touch-target min-h-[48px] p-2 rounded-xl flex flex-col items-center justify-center text-center border transition-all ${
+                  className={`touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left border transition-all ${
                     isSelected
-                      ? 'bg-amber-500/15 border-amber-500 text-amber-400 font-bold shadow-sm'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                      ? 'bg-brand-primary/15 border-brand-primary text-brand-primary font-bold shadow-sm'
+                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
                   }`}
                 >
-                  <IconComp className="w-4 h-4 mb-1" />
-                  <span className="text-xs">{goal.label}</span>
+                  <div className="flex items-center gap-2.5">
+                    <IconComp className="w-4 h-4 text-brand-primary" />
+                    <span className="text-xs font-semibold">{goal.label}</span>
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
                 </button>
               );
             })}
           </div>
         </Card>
 
-        {/* Días Disponibles */}
+        {/* Días Disponibles: Flex-wrap con dianas táctiles universales >= 48px */}
         <Card title="Días disponibles por semana">
-          <div className="grid grid-cols-7 gap-1.5 pt-1">
+          <div
+            id="days-section"
+            tabIndex={-1}
+            className="flex flex-wrap gap-2 pt-1 w-full outline-none"
+          >
             {[1, 2, 3, 4, 5, 6, 7].map((day) => {
               const isSelected = availableDays === day;
               return (
@@ -338,10 +407,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   key={day}
                   type="button"
                   onClick={() => setAvailableDays(day)}
-                  className={`touch-target min-h-[48px] rounded-xl flex items-center justify-center font-bold text-sm border transition-all ${
+                  className={`touch-target min-h-[48px] min-w-[48px] flex-1 rounded-xl flex items-center justify-center font-bold text-sm border transition-all ${
                     isSelected
-                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/10'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:border-zinc-700'
+                      ? 'bg-brand-primary text-brand-contrast border-brand-primary shadow-md'
+                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
                   }`}
                 >
                   {day}
@@ -351,18 +420,22 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </Card>
 
-        {/* Equipamiento Accesible (Taxonomía cerrada de 20 ítems) */}
+        {/* Equipamiento Accesible: Apilado vertical en 1 columna (RF-11, RF-08) */}
         <Card
           title="Equipamiento disponible"
           subtitle="Seleccioná los implementos a los que tenés acceso"
         >
           {errors.equipment && (
-            <p className="text-xs text-red-400 font-medium mb-2.5">
+            <p className="text-xs text-semantic-error-text font-medium mb-2.5">
               {errors.equipment}
             </p>
           )}
 
-          <div className="grid grid-cols-2 gap-2 pt-1">
+          <div
+            id="equipment-section"
+            tabIndex={-1}
+            className="flex flex-col gap-2 pt-1 w-full outline-none"
+          >
             {EQUIPMENT_TAXONOMY.map((item) => {
               const isSelected = equipmentIds.includes(item.id);
               return (
@@ -371,15 +444,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => toggleEquipment(item.id)}
-                  className={`touch-target min-h-[48px] px-3 py-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-medium transition-all ${
+                  className={`touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-medium transition-all ${
                     isSelected
-                      ? 'bg-amber-500/15 border-amber-500/80 text-amber-300 shadow-sm'
-                      : 'bg-zinc-900/90 border-zinc-800/80 text-zinc-300 hover:border-zinc-700'
+                      ? 'bg-brand-primary/15 border-brand-primary text-brand-primary shadow-sm'
+                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
                   }`}
                 >
                   <span className="leading-snug pr-2">{item.name}</span>
                   {isSelected && (
-                    <Check className="w-4 h-4 text-amber-400 shrink-0" />
+                    <Check className="w-4 h-4 text-brand-primary shrink-0" />
                   )}
                 </button>
               );
@@ -387,17 +460,35 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </Card>
 
-        {/* Action Buttons */}
-        <div className="pt-2 sticky bottom-4 z-20 flex flex-col gap-2">
+        {/* Acciones en Mitad Inferior: Apiladas verticalmente al 100% (RF-04, RF-05, RF-14) */}
+        <div
+          data-testid="profile-bottom-actions"
+          className="sticky bottom-0 z-30 w-full bg-surface-1/95 backdrop-blur-md border-t border-border-interactive p-3 flex flex-col gap-2.5 rounded-t-2xl shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
+        >
           <Button
             type="submit"
             variant="primary"
             size="lg"
             fullWidth
             isLoading={isSubmitting}
-            className="shadow-xl"
+            id="submit-btn"
+            className="shadow-lg min-h-[48px] touch-target"
           >
             {isEditMode ? 'Guardar Cambios' : 'Crear Perfil y Generar Mesociclo'}
+          </Button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={handleNextField}
+            data-testid="next-field-btn"
+            aria-label="Siguiente campo"
+            className="min-h-[48px] touch-target flex items-center justify-center gap-1.5"
+          >
+            <ArrowDown className="w-4 h-4" />
+            <span>Siguiente campo</span>
           </Button>
 
           {isEditMode && onCancel && (
@@ -407,6 +498,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               size="md"
               fullWidth
               onClick={onCancel}
+              className="min-h-[48px] touch-target text-content-secondary"
             >
               Cancelar
             </Button>
@@ -421,21 +513,23 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         title="Confirmar cambio de objetivo"
         description="Atención: Modificación estructural del plan"
         footer={
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 w-full">
             <Button
               variant="primary"
               size="lg"
               fullWidth
               isLoading={isSubmitting}
               onClick={performSave}
+              className="min-h-[48px] touch-target"
             >
               Confirmar y Guardar
             </Button>
             <Button
-              variant="outline"
+              variant="secondary"
               size="md"
               fullWidth
               onClick={() => setIsGoalChangeModalOpen(false)}
+              className="min-h-[48px] touch-target"
             >
               Cancelar
             </Button>
@@ -443,26 +537,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         }
       >
         <div className="flex flex-col gap-3 py-1">
-          <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs">
-            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-400" />
+          <div className="flex items-center gap-2 p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xs">
+            <AlertTriangle className="w-5 h-5 shrink-0 text-brand-primary" />
             <span>
               Cambiar tu objetivo de entrenamiento archivará el mesociclo activo y generará un nuevo mesociclo completo de N semanas.
             </span>
           </div>
 
-          <p className="text-xs text-zinc-300 leading-relaxed">
+          <p className="text-xs text-content-secondary leading-relaxed">
             El historial de cargas y sobrecarga progresiva se preservará para calcular con precisión las cargas de tus nuevos ejercicios.
           </p>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs mt-1">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-surface-base border border-border-interactive text-xs mt-1">
             <div className="flex flex-col">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Objetivo Actual</span>
-              <span className="font-semibold text-zinc-300">{goalLabels[initialGoal]}</span>
+              <span className="text-[10px] text-content-secondary uppercase tracking-wider">Objetivo Actual</span>
+              <span className="font-semibold text-content-primary">{goalLabels[initialGoal]}</span>
             </div>
-            <span className="text-zinc-500 font-bold">→</span>
+            <span className="text-content-secondary font-bold">→</span>
             <div className="flex flex-col text-right">
-              <span className="text-[10px] text-amber-400 uppercase tracking-wider">Nuevo Objetivo</span>
-              <span className="font-semibold text-amber-300">{goalLabels[trainingGoal]}</span>
+              <span className="text-[10px] text-brand-primary uppercase tracking-wider">Nuevo Objetivo</span>
+              <span className="font-semibold text-brand-primary">{goalLabels[trainingGoal]}</span>
             </div>
           </div>
         </div>
