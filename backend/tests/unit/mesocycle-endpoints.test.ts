@@ -5,6 +5,8 @@ import { createApp } from '../../src/app.js';
 import { athleteRepository } from '../../src/repositories/athlete.repository.js';
 import { exerciseRepository } from '../../src/repositories/exercise.repository.js';
 import { mesocycleRepository } from '../../src/repositories/mesocycle.repository.js';
+import { exerciseSwapRepository } from '../../src/repositories/exercise-swap.repository.js';
+import { painReportRepository } from '../../src/repositories/pain-report.repository.js';
 import { MesocycleDetailSchema } from '../../src/schemas/generated/schemas.js';
 import jwt from 'jsonwebtoken';
 
@@ -166,6 +168,8 @@ describe('TASK-29: Mesocycle Controller & Endpoints (POST /api/mesocycles, GET /
     });
 
     vi.spyOn(exerciseRepository, 'findAll').mockResolvedValue(sampleExercises);
+    vi.spyOn(exerciseSwapRepository, 'findByAthleteId').mockResolvedValue([]);
+    vi.spyOn(painReportRepository, 'findBySessionId').mockResolvedValue([]);
 
     vi.spyOn(mesocycleRepository, 'create').mockImplementation(async (data) => ({
       id: mesocycleId,

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#18181b" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+    <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ea580c" />
+      <stop offset="50%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#fde047" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <rect width="500" height="500" x="6" y="6" rx="106" fill="none" stroke="#f59e0b" stroke-opacity="0.3" stroke-width="4" />
+
+  <!-- Anvil Base / Forge Symbol -->
+  <g transform="translate(106, 120)">
+    <!-- Flame icon in center -->
+    <path
+      d="M150 20 C150 20, 180 80, 160 120 C190 85, 210 130, 200 175 C230 130, 260 190, 230 250 C210 290, 160 310, 150 310 C140 310, 90 290, 70 250 C40 190, 70 130, 100 175 C90 130, 110 85, 140 120 C120 80, 150 20, 150 20 Z"
+      fill="url(#flameGrad)"
+      filter="url(#glow)"
+    />
+    
+    <!-- Anvil silhouette at bottom -->
+    <path
+      d="M40 250 L260 250 C280 250, 290 265, 275 275 L235 295 L245 320 L55 320 L65 295 L25 275 C10 265, 20 250, 40 250 Z"
+      fill="#27272a"
+      stroke="#f59e0b"
+      stroke-width="3"
+    />
+    
+    <!-- Dumbbell / Hammer spark -->
+    <circle cx="150" cy="200" r="16" fill="#ffffff" opacity="0.9" filter="url(#glow)" />
+  </g>
+</svg>

@@ -1,0 +1,77 @@
+name: SmartForge CI Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Lint, Types, Tests & Build (Constitución §4, RNF-08)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: smartforge_test
+          POSTGRES_PASSWORD: smartforge_test_password
+          POSTGRES_DB: smartforge_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://smartforge_test:smartforge_test_password@localhost:5432/smartforge_test_db
+      JWT_SECRET: test_jwt_secret_key_smartforge_32_characters_minimum
+      PORT: 3000
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: 1. Lint OpenAPI Specification (Constitución §1, §4)
+        run: npm run lint:openapi
+
+      - name: 2. Generate Zod Schemas & Types from OpenAPI Contract (RNF-07)
+        run: npm run generate:types
+
+      - name: 3. TypeScript Typecheck (tsc --noEmit)
+        run: npm run typecheck
+
+      - name: 4. Apply Database Migrations & Seeds
+        run: |
+          npm run db:migrate
+          npm run db:seed
+
+      - name: 5. Execute Backend Unit Tests (Constitución §4)
+        run: npm run test:unit
+
+      - name: 6. Execute OpenAPI Contract Tests (Constitución §4)
+        run: npm run test:contract
+
+      - name: 7. Execute Frontend Unit & Component Tests
+        run: npm run test --prefix frontend
+
+      - name: 8. Verify Production Bundles (Frontend + Backend)
+        run: npm run build

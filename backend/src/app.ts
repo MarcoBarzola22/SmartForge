@@ -9,6 +9,7 @@ import { routineRoutes } from './routes/routine.routes.js';
 import { sessionRoutes } from './routes/session.routes.js';
 import { setRoutes } from './routes/set.routes.js';
 import { progressionRoutes } from './routes/progression.routes.js';
+import { syncRoutes } from './routes/sync.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -43,6 +44,9 @@ export function createApp(): Express {
 
   app.use('/api/sets', setRoutes);
   app.use('/sets', setRoutes);
+
+  app.use('/api/sync', syncRoutes);
+  app.use('/sync', syncRoutes);
 
   app.use(errorHandler);
 

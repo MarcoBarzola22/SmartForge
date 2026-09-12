@@ -21,21 +21,30 @@ import {
 } from '../repositories/exercise-swap.repository.js';
 import {
   PainReportRepository,
-  painReportRepository
+  painReportRepository,
+  type PainReportRecord
 } from '../repositories/pain-report.repository.js';
 import {
   MesocycleGeneratorService,
   mesocycleGeneratorService,
   LIMITED_EQUIPMENT_WARNING
 } from './mesocycle-generator.service.js';
+import {
+  FatigueAdjusterService,
+  fatigueAdjusterService
+} from './fatigue-adjuster.service.js';
+import { NotFoundError } from '../errors/app-error.js';
 import type {
   AthleteProfile,
   Exercise,
   ExerciseAssignment,
   ExperienceLevel,
+  Joint,
   MesocycleDetail,
+  PainIntensity,
   PeriodizationType,
   SessionPlan,
+  TrainingGoal,
   WeekPlan
 } from '../schemas/generated/schemas.js';
 
@@ -50,7 +59,8 @@ export class MesocycleRotationService {
     public readonly athleteRepo: AthleteRepository = athleteRepository,
     public readonly exerciseSwapRepo: ExerciseSwapRepository = exerciseSwapRepository,
     public readonly painReportRepo: PainReportRepository = painReportRepository,
-    public readonly mesocycleGenService: MesocycleGeneratorService = mesocycleGeneratorService
+    public readonly mesocycleGenService: MesocycleGeneratorService = mesocycleGeneratorService,
+    public readonly fatigueAdjuster: FatigueAdjusterService = fatigueAdjusterService
   ) {}
 
   /**
@@ -85,18 +95,89 @@ export class MesocycleRotationService {
   }
 
   /**
-   * Selecciona una variante compatible para rotar un ejercicio accesorio (CA-10.1, CA-10.4).
+   * Extrae el conjunto de articulaciones con reportes de dolor moderado o severo (RF-10, CA-10.3).
+   * En la rotación de mesociclo, no se asignan ejercicios cuya articulación principal tenga dolor activo.
+   */
+  getPainCompromisedJoints(
+    painReports: (PainReportRecord | { joint: Joint; intensity: PainIntensity })[] = [],
+    minIntensity: 'moderada' | 'severa' = 'moderada'
+  ): Set<Joint> {
+    const compromised = new Set<Joint>();
+    for (const report of painReports) {
+      if (minIntensity === 'severa') {
+        if (report.intensity === 'severa') {
+          compromised.add(report.joint);
+        }
+      } else {
+        if (report.intensity === 'moderada' || report.intensity === 'severa') {
+          compromised.add(report.joint);
+        }
+      }
+    }
+    return compromised;
+  }
+
+  /**
+   * Extrae los IDs de ejercicios reportados con dolor severo en el mesociclo previo (RF-10, CA-10.3).
+   */
+  getPainCompromisedExerciseIds(
+    painReports: (PainReportRecord | { exercise_id?: string; intensity: PainIntensity })[] = [],
+    minIntensity: 'moderada' | 'severa' = 'severa'
+  ): Set<string> {
+    const compromised = new Set<string>();
+    for (const report of painReports) {
+      if (report.exercise_id) {
+        if (minIntensity === 'severa') {
+          if (report.intensity === 'severa') {
+            compromised.add(report.exercise_id);
+          }
+        } else {
+          if (report.intensity === 'moderada' || report.intensity === 'severa') {
+            compromised.add(report.exercise_id);
+          }
+        }
+      }
+    }
+    return compromised;
+  }
+
+  /**
+   * Comprueba si un ejercicio está comprometido por historial de dolor articular (RF-10, CA-10.3).
+   * Verifica tanto el ID explícito del ejercicio como si su articulación principal está en dolor.
+   */
+  isExerciseCompromisedByPain(
+    exercise: Exercise,
+    compromisedJoints: Set<Joint> = new Set<Joint>(),
+    compromisedExerciseIds: Set<string> = new Set<string>()
+  ): boolean {
+    if (compromisedExerciseIds.has(exercise.id)) {
+      return true;
+    }
+
+    const primaryJoint = this.fatigueAdjuster.getPrimaryJoint(exercise);
+    if (primaryJoint && compromisedJoints.has(primaryJoint)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Selecciona una variante compatible para rotar un ejercicio accesorio (CA-10.1, CA-10.3, CA-10.4).
    * Criterios:
    * 1. Mismo patrón de movimiento y compatibilidad con el equipamiento del atleta.
    * 2. Excluye ejercicios vetados por preferencia personal.
-   * 3. Prioriza variantes con el mismo músculo primario y distintas del ejercicio actual.
-   * 4. Si no hay variantes distintas viables, mantiene de forma segura el ejercicio actual.
+   * 3. Excluye ejercicios comprometidos por dolor articular moderado/severo o reporte severo previo.
+   * 4. Prioriza variantes con el mismo músculo primario y distintas del ejercicio actual.
+   * 5. Si no hay variantes distintas viables, mantiene de forma segura el ejercicio actual.
    */
   selectRotatedAccessory(
     currentExercise: Exercise,
     catalog: Exercise[],
     allowedEquipmentIds: string[],
-    excludedExerciseIds: Set<string> = new Set<string>()
+    excludedExerciseIds: Set<string> = new Set<string>(),
+    compromisedJoints: Set<Joint> = new Set<Joint>(),
+    compromisedExerciseIds: Set<string> = new Set<string>()
   ): Exercise {
     const equipSet = new Set(allowedEquipmentIds);
     equipSet.add('bodyweight');
@@ -109,11 +190,14 @@ export class MesocycleRotationService {
         (id) => id === 'bodyweight' || id === 'none' || id === 'sin_equipamiento'
       );
 
-    // Filtrar candidatos activos del mismo patrón compatibles con el equipamiento y no vetados
+    // Filtrar candidatos activos del mismo patrón compatibles con el equipamiento, no vetados y no comprometidos por dolor
     const candidates = catalog.filter((e) => {
       if (!e.is_active) return false;
       if (e.movement_pattern !== currentExercise.movement_pattern) return false;
       if (excludedExerciseIds.has(e.id)) return false;
+      if (this.isExerciseCompromisedByPain(e, compromisedJoints, compromisedExerciseIds)) {
+        return false;
+      }
 
       if (isBwOnly) {
         return (
@@ -134,7 +218,7 @@ export class MesocycleRotationService {
     const distinctCandidates = candidates.filter((e) => e.id !== currentExercise.id);
 
     if (distinctCandidates.length === 0) {
-      return currentExercise;
+      return distinctCandidates[0] || candidates[0] || currentExercise;
     }
 
     // 1ª preferencia: mismo músculo primario y accesorio (monoarticular)
@@ -193,10 +277,11 @@ export class MesocycleRotationService {
   }
 
   /**
-   * Genera la estructura completa de un nuevo mesociclo rotado (RF-10, CA-10.1, CA-10.4):
+   * Genera la estructura completa de un nuevo mesociclo rotado (RF-10, CA-10.1, CA-10.3, CA-10.4):
    * - Mantiene los ejercicios compuestos principales preservando la progresión de carga histórica.
    * - Rota los ejercicios accesorios por variantes compatibles del catálogo.
    * - Respeta el equipamiento del atleta y excluye ejercicios cambiados por preferencia personal.
+   * - Verifica el historial de dolor articular (CA-10.3) y descarta ejercicios con dolor severo/moderado previo.
    * - Programa la última semana como semana de descarga (-40% volumen, -10% carga, RIR +1).
    */
   async generateRotatedMesocyclePlan(
@@ -204,7 +289,8 @@ export class MesocycleRotationService {
     previousMesocycle: MesocycleDetail,
     catalog: Exercise[],
     swaps: ExerciseSwap[] = [],
-    customDurationWeeks?: number
+    customDurationWeeks?: number,
+    painReports: (PainReportRecord | { joint: Joint; intensity: PainIntensity; exercise_id?: string })[] = []
   ): Promise<CreateMesocycleData> {
     const defaultDuration = this.getDeloadWeekNumber(athlete.experience_level);
     const weeksCount = customDurationWeeks
@@ -213,6 +299,8 @@ export class MesocycleRotationService {
 
     const athleteEquipmentIds = athlete.equipment.map((eq) => eq.id);
     const excludedExerciseIds = this.getExcludedExerciseIdsFromSwaps(swaps);
+    const compromisedJoints = this.getPainCompromisedJoints(painReports, 'moderada');
+    const painCompromisedExerciseIds = this.getPainCompromisedExerciseIds(painReports, 'severa');
     const isConstrained = this.mesocycleGenService.isEquipmentConstrained(athlete, catalog);
 
     const periodizationType: PeriodizationType =
@@ -264,7 +352,7 @@ export class MesocycleRotationService {
               ? preservedLoad
               : this.mesocycleGenService.calculateInitialLoad(athlete, chosenExercise);
         } else {
-          // Rotar accesorio respetando exclusiones y equipamiento
+          // Rotar accesorio respetando exclusiones, dolor articular y equipamiento
           const combinedExclusions = new Set<string>([
             ...excludedExerciseIds,
             ...usedInThisSession
@@ -274,7 +362,9 @@ export class MesocycleRotationService {
             currentExercise,
             catalog,
             athleteEquipmentIds,
-            combinedExclusions
+            combinedExclusions,
+            compromisedJoints,
+            painCompromisedExerciseIds
           );
 
           baseLoad = this.mesocycleGenService.calculateInitialLoad(athlete, chosenExercise);
@@ -484,6 +574,71 @@ export class MesocycleRotationService {
       ...deloaded,
       week_number: weekNumber
     };
+  }
+
+  /**
+   * Genera o rota un nuevo mesociclo para un atleta autenticado (RF-10, CA-10.1–CA-10.4).
+   * Si el atleta tiene un mesociclo activo previo:
+   * - Archiva el mesociclo anterior.
+   * - Mantiene los ejercicios compuestos con su progresión histórica.
+   * - Rota los ejercicios accesorios evitando vetos de preferencia personal y dolor articular previo.
+   * - Si no tiene mesociclo activo, genera uno nuevo desde cero.
+   */
+  async rotateAndPersistForAthlete(
+    athleteId: string,
+    options?: { target_goal?: TrainingGoal; custom_duration_weeks?: number }
+  ): Promise<MesocycleDetail> {
+    const athlete = await this.athleteRepo.findById(athleteId);
+    if (!athlete) {
+      throw new NotFoundError('Perfil de atleta no encontrado.');
+    }
+
+    const effectiveAthlete: AthleteProfile = options?.target_goal
+      ? { ...athlete, training_goal: options.target_goal }
+      : athlete;
+
+    const activeMesocycle = await this.mesocycleRepo.findActiveByAthleteId(athleteId);
+
+    // Si no hay mesociclo activo previo, delegar en generación desde cero
+    if (!activeMesocycle) {
+      return this.mesocycleGenService.generateAndPersistForAthlete(athleteId, options);
+    }
+
+    const catalog = await this.exerciseRepo.findAll({ limit: 500 });
+    const swaps = await this.exerciseSwapRepo.findByAthleteId(athleteId);
+
+    // Obtener reportes de dolor del mesociclo previo para verificación de dolor articular (CA-10.3)
+    let painReports: PainReportRecord[] = [];
+    try {
+      const allSessionIds: string[] = [];
+      for (const week of activeMesocycle.weeks) {
+        for (const session of week.sessions) {
+          allSessionIds.push(session.id);
+        }
+      }
+      for (const sId of allSessionIds) {
+        const reports = await this.painReportRepo.findBySessionId(sId);
+        painReports.push(...reports);
+      }
+    } catch {
+      painReports = [];
+    }
+
+    // Generar plan rotado
+    const planData = await this.generateRotatedMesocyclePlan(
+      effectiveAthlete,
+      activeMesocycle,
+      catalog,
+      swaps,
+      options?.custom_duration_weeks,
+      painReports
+    );
+
+    // Archivar mesociclo activo previo
+    await this.mesocycleRepo.archiveActiveByAthleteId(athleteId);
+
+    // Persistir nuevo mesociclo
+    return this.mesocycleRepo.create(planData);
   }
 }
 

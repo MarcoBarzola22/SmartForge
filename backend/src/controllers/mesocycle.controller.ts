@@ -3,11 +3,16 @@ import {
   MesocycleGeneratorService,
   mesocycleGeneratorService
 } from '../services/mesocycle-generator.service.js';
+import {
+  MesocycleRotationService,
+  mesocycleRotationService
+} from '../services/mesocycle-rotation.service.js';
 import { UnauthorizedError } from '../errors/app-error.js';
 
 export class MesocycleController {
   constructor(
-    private readonly service: MesocycleGeneratorService = mesocycleGeneratorService
+    private readonly service: MesocycleGeneratorService = mesocycleGeneratorService,
+    private readonly rotationService: MesocycleRotationService = mesocycleRotationService
   ) {}
 
   generate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -17,7 +22,7 @@ export class MesocycleController {
         throw new UnauthorizedError('No autorizado para generar un mesociclo.');
       }
 
-      const mesocycle = await this.service.generateAndPersistForAthlete(
+      const mesocycle = await this.rotationService.rotateAndPersistForAthlete(
         athleteId,
         req.body
       );

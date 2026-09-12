@@ -285,11 +285,11 @@
   - **RF**: RF-10, CA-10.1, CA-10.4
   - **Hecho cuando**: Al generar un nuevo mesociclo, los ejercicios principales se mantienen con su progresión histórica y los accesorios se renuevan respetando historial de swaps previos.
 
-- [ ] **TASK-53**: Implementar verificación de historial de dolor articular durante la rotación de mesociclo para evitar sugerir ejercicios con molestias previas en `mesocycle-rotation.service.ts`.
+- [x] **TASK-53**: Implementar verificación de historial de dolor articular durante la rotación de mesociclo para evitar sugerir ejercicios con molestias previas en `mesocycle-rotation.service.ts`.
   - **RF**: RF-10, CA-10.3
   - **Hecho cuando**: Los tests unitarios demuestran que ejercicios reportados con dolor severo en el mesociclo previo son descartados en la nueva selección.
 
-- [ ] **TASK-54**: Implementar endpoint de regeneración y rotación de mesociclo integrado en `mesocycle.controller.ts`.
+- [x] **TASK-54**: Implementar endpoint de regeneración y rotación de mesociclo integrado en `mesocycle.controller.ts`.
   - **RF**: RF-10, Constitución §3, §4
   - **Hecho cuando**: El flujo de transición de mesociclo archiva el anterior, crea el nuevo con histórico preservado y pasa los tests de contrato.
 
@@ -297,15 +297,15 @@
 
 ## Fase 13: Sincronización offline backend (RNF-03)
 
-- [ ] **TASK-55**: Implementar endpoint de sincronización por lotes (`POST /api/sync`) en `sync.controller.ts` y `sync.routes.ts`.
+- [x] **TASK-55**: Implementar endpoint de sincronización por lotes (`POST /api/sync`) en `sync.controller.ts` y `sync.routes.ts`.
   - **RF**: RNF-03, CL-10, Constitución §3
   - **Hecho cuando**: El endpoint procesa un array de operaciones mixtas (check-ins, set logs, pain reports) de forma atómica o con respuesta parcial HTTP 207.
 
-- [ ] **TASK-56**: Implementar resolución de conflictos basada en `client_timestamp` (last-write-wins) en `sync.service.ts`.
+- [x] **TASK-56**: Implementar resolución de conflictos basada en `client_timestamp` (last-write-wins) en `sync.service.ts`.
   - **RF**: RNF-03, DT-10
   - **Hecho cuando**: Al enviar dos registros del mismo set con distinta hora, el registro con `client_timestamp` más reciente sobrescribe al anterior en la base de datos.
 
-- [ ] **TASK-57**: Crear tests de integración y contrato para el endpoint de sincronización offline con múltiples dispositivos simulados.
+- [x] **TASK-57**: Crear tests de integración y contrato para el endpoint de sincronización offline con múltiples dispositivos simulados.
   - **RF**: RNF-03, Constitución §4
   - **Hecho cuando**: `npm run test:contract` valida la sincronización correcta de lotes offline incluyendo casos con duplicados y marcas de tiempo desfasadas.
 
@@ -313,19 +313,19 @@
 
 ## Fase 14: Frontend — Shell base, diseño y componentes UI (RNF-01, RNF-02)
 
-- [ ] **TASK-58**: Configurar proyecto Vite + React + Tailwind CSS con layout mobile-first optimizado para viewport ≤ 390px.
+- [x] **TASK-58**: Configurar proyecto Vite + React + Tailwind CSS con layout mobile-first optimizado para viewport ≤ 390px.
   - **RF**: RNF-01, RNF-02, Constitución §2
   - **Hecho cuando**: La aplicación renderiza un contenedor centrado con max-width 390px y barra de estado adaptativa.
 
-- [ ] **TASK-59**: Crear componentes UI atómicos accesibles con touch targets ≥ 48px (`Button`, `Input`, `Card`, `Badge`, `Modal`, `Slider`, `Toast`).
+- [x] **TASK-59**: Crear componentes UI atómicos accesibles con touch targets ≥ 48px (`Button`, `Input`, `Card`, `Badge`, `Modal`, `Slider`, `Toast`).
   - **RF**: RNF-02, Constitución §2
   - **Hecho cuando**: Todos los elementos interactivos tienen tamaño visual y zona táctil mínima de 48×48px verificados por tests de componentes.
 
-- [ ] **TASK-60**: Implementar barra de navegación inferior (Bottom Navigation) anclada en el 60% inferior de la pantalla para uso con una sola mano.
+- [x] **TASK-60**: Implementar barra de navegación inferior (Bottom Navigation) anclada en el 60% inferior de la pantalla para uso con una sola mano.
   - **RF**: RNF-01, Constitución §2
   - **Hecho cuando**: La barra de navegación permite alternar entre Rutina, Sesión Activa, Catálogo y Perfil sin requerir alcanzar la mitad superior de la pantalla.
 
-- [ ] **TASK-61**: Configurar cliente API tipado (`frontend/src/api/client.ts`) y provider de TanStack React Query con configuración de cache y reintentos.
+- [x] **TASK-61**: Configurar cliente API tipado (`frontend/src/api/client.ts`) y provider de TanStack React Query con configuración de cache y reintentos.
   - **RF**: RNF-07, DT-05
   - **Hecho cuando**: Las llamadas a endpoints utilizan los tipos TypeScript auto-generados desde OpenAPI y manejan loading/error de forma reactiva.
 
@@ -333,15 +333,15 @@
 
 ## Fase 15: Frontend — Autenticación y Onboarding de perfil (RF-01)
 
-- [ ] **TASK-62**: Implementar `LoginPage.tsx` con botón de inicio de sesión con Google OAuth y manejo de sesión JWT en `useAuth.ts`.
+- [x] **TASK-62**: Implementar `LoginPage.tsx` con botón de inicio de sesión con Google OAuth y manejo de sesión JWT en `useAuth.ts`.
   - **RF**: RF-01, CA-01.1
   - **Hecho cuando**: El usuario puede autenticarse con Google, almacenar el JWT en almacenamiento seguro local y ser redirigido según el estado de su perfil.
 
-- [ ] **TASK-63**: Implementar formulario de onboarding y perfil de atleta (`ProfilePage.tsx`) con selección de nivel, objetivo, días y selector múltiple de equipamiento.
+- [x] **TASK-63**: Implementar formulario de onboarding y perfil de atleta (`ProfilePage.tsx`) con selección de nivel, objetivo, días y selector múltiple de equipamiento.
   - **RF**: RF-01, CA-01.2, CA-01.4, CA-01.5
   - **Hecho cuando**: El formulario valida en cliente edad ≥ 16 años, restringe el equipamiento a la taxonomía cerrada de 20 ítems y crea el perfil exitosamente.
 
-- [ ] **TASK-64**: Implementar flujo de edición de perfil y confirmación de cambios de objetivo con aviso de generación de nuevo mesociclo.
+- [x] **TASK-64**: Implementar flujo de edición de perfil y confirmación de cambios de objetivo con aviso de generación de nuevo mesociclo.
   - **RF**: RF-01, CA-01.5
   - **Hecho cuando**: Al cambiar objetivo en el perfil se solicita confirmación explícita alertando sobre el archivado del mesociclo activo.
 
@@ -349,15 +349,15 @@
 
 ## Fase 16: Frontend — Dashboard de mesociclo y editor de rutina (RF-02, RF-03, RF-10)
 
-- [ ] **TASK-65**: Implementar `MesocyclePage.tsx` mostrando resumen del mesociclo activo, progreso semanal, distribución de patrones y aviso de semana de descarga.
+- [x] **TASK-65**: Implementar `MesocyclePage.tsx` mostrando resumen del mesociclo activo, progreso semanal, distribución de patrones y aviso de semana de descarga.
   - **RF**: RF-02, RF-10, CA-10.2
   - **Hecho cuando**: El usuario visualiza la estructura de semanas, sesiones planificadas y un banner distintivo en la semana de deload.
 
-- [ ] **TASK-66**: Implementar `RoutineEditorPage.tsx` con listado de ejercicios por sesión y botón de cambio de ejercicio.
+- [x] **TASK-66**: Implementar `RoutineEditorPage.tsx` con listado de ejercicios por sesión y botón de cambio de ejercicio.
   - **RF**: RF-03, CA-03.3
   - **Hecho cuando**: El atleta puede inspeccionar series, reps y cargas planificadas de cada ejercicio y tocar "Cambiar ejercicio".
 
-- [ ] **TASK-67**: Implementar modal de ejercicios alternativos (`SwapExerciseModal.tsx`) con filtro de equipamiento y selector de motivo de cambio.
+- [x] **TASK-67**: Implementar modal de ejercicios alternativos (`SwapExerciseModal.tsx`) con filtro de equipamiento y selector de motivo de cambio.
   - **RF**: RF-03, CA-03.1, CA-03.2, CA-03.4
   - **Hecho cuando**: Se muestran alternativas compatibles del mismo patrón muscular; si no hay equipamiento compatible, se muestra mensaje de advertencia y permite confirmar el swap con su motivo.
 
@@ -365,19 +365,19 @@
 
 ## Fase 17: Frontend — Flujo de ejecución de sesión y check-in (RF-04, RF-05, RF-06, RF-07, RF-08)
 
-- [ ] **TASK-68**: Implementar modal obligatorio de check-in pre-sesión (`CheckInModal.tsx`) con selector de fatiga 1–5 y mapa interactivo de articulaciones bilaterales con intensidad.
+- [x] **TASK-68**: Implementar modal obligatorio de check-in pre-sesión (`CheckInModal.tsx`) con selector de fatiga 1–5 y mapa interactivo de articulaciones bilaterales con intensidad.
   - **RF**: RF-04, CA-04.1, CA-04.2, CA-04.3
   - **Hecho cuando**: El usuario no puede registrar series sin completar el check-in, seleccionando nivel de fatiga y molestias articulares (leve/moderada/severa).
 
-- [ ] **TASK-69**: Implementar componente de registro rápido de series (`SetLogger.tsx`) con inputs táctiles optimizados (≤ 4 toques por serie).
+- [x] **TASK-69**: Implementar componente de registro rápido de series (`SetLogger.tsx`) con inputs táctiles optimizados (≤ 4 toques por serie).
   - **RF**: RF-05, RNF-01, CA-05.1, CA-05.2
   - **Hecho cuando**: El atleta registra peso, reps y RIR mediante botones de incremento rápido y un botón grande de confirmación en el área inferior del viewport.
 
-- [ ] **TASK-70**: Implementar visualización de sugerencias dinámicas de sobrecarga progresiva y advertencias de ajuste por fatiga/dolor en `SessionPage.tsx`.
+- [x] **TASK-70**: Implementar visualización de sugerencias dinámicas de sobrecarga progresiva y advertencias de ajuste por fatiga/dolor en `SessionPage.tsx`.
   - **RF**: RF-07, RF-08, CA-07.1, CA-08.3
   - **Hecho cuando**: Al iniciar un ejercicio, la tarjeta muestra la carga y reps sugeridas con el motivo, o un banner de reducción/exclusión si se reportó dolor.
 
-- [ ] **TASK-71**: Implementar modal de reporte de molestia articular post-ejercicio (`PainReportModal.tsx`) y botón de finalización de sesión con resumen de rendimiento.
+- [x] **TASK-71**: Implementar modal de reporte de molestia articular post-ejercicio (`PainReportModal.tsx`) y botón de finalización de sesión con resumen de rendimiento.
   - **RF**: RF-05, RF-06, CA-06.1, CA-06.2
   - **Hecho cuando**: El atleta puede opcionalmente reportar dolor tras un ejercicio y finalizar la sesión visualizando el volumen total completado.
 
@@ -385,11 +385,11 @@
 
 ## Fase 18: Frontend — Catálogo y detalle de ejercicio con video (RF-09)
 
-- [ ] **TASK-72**: Implementar página de exploración del catálogo (`ExerciseCatalogPage.tsx`) con barra de búsqueda y filtros por patrón, músculo y equipamiento.
+- [x] **TASK-72**: Implementar página de exploración del catálogo (`ExerciseCatalogPage.tsx`) con barra de búsqueda y filtros por patrón, músculo y equipamiento.
   - **RF**: RF-09, CA-09.1
   - **Hecho cuando**: El usuario puede buscar y filtrar interactivamente entre los 200 ejercicios con respuesta instantánea (<100ms).
 
-- [ ] **TASK-73**: Implementar vista de detalle de ejercicio (`ExerciseDetailPage.tsx`) con reproductor de video demostrativo y placeholder fallback offline.
+- [x] **TASK-73**: Implementar vista de detalle de ejercicio (`ExerciseDetailPage.tsx`) con reproductor de video demostrativo y placeholder fallback offline.
   - **RF**: RF-09, CA-09.3, RNF-04
   - **Hecho cuando**: El video se reproduce en bucle con controles mínimos y muestra un fallback ilustrado en español si falla la conexión a internet.
 
@@ -397,15 +397,15 @@
 
 ## Fase 19: Frontend — Service Worker, PWA e IndexedDB offline (RNF-03)
 
-- [ ] **TASK-74**: Configurar manifest PWA (`manifest.json`), iconos de aplicación y registro del Service Worker con Workbox.
+- [x] **TASK-74**: Configurar manifest PWA (`manifest.json`), iconos de aplicación y registro del Service Worker con Workbox.
   - **RF**: RNF-03
   - **Hecho cuando**: La aplicación es instalable en dispositivos móviles y cumple con todos los criterios de auditoría PWA de Lighthouse.
 
-- [ ] **TASK-75**: Implementar capa de almacenamiento local con IndexedDB (`frontend/src/stores/offlineStore.ts`) para almacenar rutina del día, check-ins y series.
+- [x] **TASK-75**: Implementar capa de almacenamiento local con IndexedDB (`frontend/src/stores/offlineStore.ts`) para almacenar rutina del día, check-ins y series.
   - **RF**: RNF-03, DT-04
   - **Hecho cuando**: Las sesiones, check-ins y series registradas en modo avión se guardan localmente en IndexedDB sin pérdida de datos.
 
-- [ ] **TASK-76**: Implementar hook de sincronización automática (`useOfflineSync.ts`) y cola de Background Sync con indicador visual de estado offline/online.
+- [x] **TASK-76**: Implementar hook de sincronización automática (`useOfflineSync.ts`) y cola de Background Sync con indicador visual de estado offline/online.
   - **RF**: RNF-03, DT-10
   - **Hecho cuando**: Al recuperar la conexión a internet, los datos encolados se envían al backend (`POST /api/sync`) y el badge de sincronización pasa a "Sincronizado".
 
@@ -413,18 +413,18 @@
 
 ## Fase 20: Pipeline de CI, verificación y auditoría final
 
-- [ ] **TASK-77**: Configurar workflow de GitHub Actions (`.github/workflows/ci.yml`) con ejecución secuencial: `lint:openapi` → `generate:types` → `tsc` → `test:unit` → `test:contract`.
+- [x] **TASK-77**: Configurar workflow de GitHub Actions (`.github/workflows/ci.yml`) con ejecución secuencial: `lint:openapi` → `generate:types` → `tsc` → `test:unit` → `test:contract`.
   - **RF**: Constitución §4, RNF-08
   - **Hecho cuando**: El pipeline de CI ejecuta en menos de 3 minutos y bloquea cualquier pull request con fallos de tipo, linter o tests.
 
-- [ ] **TASK-78**: Ejecutar suite completa de tests de contrato OpenAPI (`npm run test:contract`) cubriendo los 20 endpoints con casos válidos e inválidos.
+- [x] **TASK-78**: Ejecutar suite completa de tests de contrato OpenAPI (`npm run test:contract`) cubriendo los 20 endpoints con casos válidos e inválidos.
   - **RF**: Todos los RF (RF-01 a RF-10), Constitución §4
   - **Hecho cuando**: Todos los endpoints verifican que sus respuestas cumplen el 100% de los schemas Zod generados sin discrepancias de contrato.
 
-- [ ] **TASK-79**: Realizar auditoría de accesibilidad táctil y performance Lighthouse en entorno móvil simulado (≤ 390px).
+- [x] **TASK-79**: Realizar auditoría de accesibilidad táctil y performance Lighthouse en entorno móvil simulado (≤ 390px).
   - **RF**: RNF-01, RNF-02, RNF-06
   - **Hecho cuando**: Lighthouse reporta Performance ≥ 90, Accesibilidad ≥ 90, PWA válido y el 100% de los botones tienen touch targets ≥ 48px.
 
-- [ ] **TASK-80**: Verificación integral end-to-end del flujo completo del MVP: Registro → Perfil → Generación de Mesociclo → Check-in pre-entreno → Registro de Series → Sugerencia de Progresión → Reporte de Dolor → Ajuste de Carga.
+- [x] **TASK-80**: Verificación integral end-to-end del flujo completo del MVP: Registro → Perfil → Generación de Mesociclo → Check-in pre-entreno → Registro de Series → Sugerencia de Progresión → Reporte de Dolor → Ajuste de Carga.
   - **RF**: RF-01, RF-02, RF-03, RF-04, RF-05, RF-06, RF-07, RF-08, RF-09, RF-10
   - **Hecho cuando**: El flujo completo se ejecuta de inicio a fin en una sesión simulada sin errores de consola ni discrepancias en base de datos.
