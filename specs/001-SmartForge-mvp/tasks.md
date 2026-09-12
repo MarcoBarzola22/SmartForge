@@ -97,7 +97,7 @@
   - **RF**: RF-02, RF-03, RF-10, Constitución §5
   - **Hecho cuando**: Las tablas se crean con FK en cascada para la jerarquía del plan y `ON DELETE RESTRICT` para referencias a ejercicios maestros.
 
-- [ ] **TASK-15**: Crear migración `004_sessions_and_logs.sql` con tablas `session`, `checkin`, `checkin_pain`, `set_log` y `exercise_pain_report`.
+- [x] **TASK-15**: Crear migración `004_sessions_and_logs.sql` con tablas `session`, `checkin`, `checkin_pain`, `set_log` y `exercise_pain_report`.
   - **RF**: RF-04, RF-05, RF-06, RF-08, Constitución §5
   - **Hecho cuando**: Las tablas tienen constraints de validación (`fatigue_level BETWEEN 1 AND 5`, `rir BETWEEN 0 AND 5`, `weight_kg >= 0`, `reps >= 0`) y campos `client_timestamp` indexados.
 
@@ -105,19 +105,19 @@
 
 ## Fase 4: Catálogo de ejercicios y seeds (RF-09)
 
-- [ ] **TASK-16**: Crear seed SQL/TypeScript de equipamiento con la taxonomía cerrada de 20 ítems (`backend/src/db/seeds/equipment.seed.ts`).
+- [x] **TASK-16**: Crear seed SQL/TypeScript de equipamiento con la taxonomía cerrada de 20 ítems (`backend/src/db/seeds/equipment.seed.ts`).
   - **RF**: RF-01
   - **Hecho cuando**: La tabla `equipment` contiene exactamente los 20 ítems definidos en RF-01 con sus identificadores normalizados.
 
-- [ ] **TASK-17**: Crear dataset y script de seed para los 200 ejercicios con metadatos completos (patrón, músculo, equipamiento, `initial_load_ratio`, URL video y fallback).
+- [x] **TASK-17**: Crear dataset y script de seed para los 200 ejercicios con metadatos completos (patrón, músculo, equipamiento, `initial_load_ratio`, URL video y fallback).
   - **RF**: RF-09, CA-02.5
   - **Hecho cuando**: Al ejecutar `npm run db:seed`, la tabla `exercise` tiene ≥200 registros activos y la tabla `exercise_alternative` tiene mapeadas sus equivalencias bidireccionales.
 
-- [ ] **TASK-18**: Implementar `exercise.repository.ts` con queries de búsqueda, filtrado por equipamiento/patrón/músculo y consulta de alternativas.
+- [x] **TASK-18**: Implementar `exercise.repository.ts` con queries de búsqueda, filtrado por equipamiento/patrón/músculo y consulta de alternativas.
   - **RF**: RF-03, RF-09, Constitución §3
   - **Hecho cuando**: Las pruebas de integración en `exercise.repository.test.ts` verifican filtrado exacto y exclusión de ejercicios inactivos (`is_active = false`).
 
-- [ ] **TASK-19**: Implementar `exercise-catalog.service.ts`, `exercise.controller.ts` y `exercise.routes.ts` con tests unitarios y de contrato.
+- [x] **TASK-19**: Implementar `exercise-catalog.service.ts`, `exercise.controller.ts` y `exercise.routes.ts` con tests unitarios y de contrato.
   - **RF**: RF-09, Constitución §3, §4
   - **Hecho cuando**: `GET /api/exercises` y `GET /api/exercises/:id` responden con status 200 y pasan al 100% sus tests de contrato OpenAPI.
 
@@ -125,19 +125,19 @@
 
 ## Fase 5: Autenticación y perfil de atleta (RF-01)
 
-- [ ] **TASK-20**: Implementar middleware de autenticación JWT (`auth.middleware.ts`) para verificar id_tokens de Google OAuth y extraer el atleta autenticado.
+- [x] **TASK-20**: Implementar middleware de autenticación JWT (`auth.middleware.ts`) para verificar id_tokens de Google OAuth y extraer el atleta autenticado.
   - **RF**: RF-01, CL-18, Constitución §3
   - **Hecho cuando**: Un request sin header `Authorization` retorna 401, un token inválido retorna 401 y un token válido adjunta `req.athlete` al contexto.
 
-- [ ] **TASK-21**: Implementar `athlete.repository.ts` para operaciones CRUD de atleta, equipamiento asociado y soft-delete (`deleted_at`).
+- [x] **TASK-21**: Implementar `athlete.repository.ts` para operaciones CRUD de atleta, equipamiento asociado y soft-delete (`deleted_at`).
   - **RF**: RF-01, Constitución §3, §5
   - **Hecho cuando**: Se puede crear un atleta con equipamiento atómicamente en una transacción SQL y recuperar su perfil completo con relaciones.
 
-- [ ] **TASK-22**: Implementar `auth.service.ts` y `profile.service.ts` con validación de edad mínima (≥16 años) y control de email duplicado.
+- [x] **TASK-22**: Implementar `auth.service.ts` y `profile.service.ts` con validación de edad mínima (≥16 años) y control de email duplicado.
   - **RF**: RF-01, CA-01.2, CA-01.3
   - **Hecho cuando**: `profile.service.test.ts` verifica rechazo de edades < 16 años y rechazo de duplicados de Google email con excepción de conflicto (409).
 
-- [ ] **TASK-23**: Implementar `auth.controller.ts`, `profile.controller.ts`, `auth.routes.ts` y `profile.routes.ts`.
+- [x] **TASK-23**: Implementar `auth.controller.ts`, `profile.controller.ts`, `auth.routes.ts` y `profile.routes.ts`.
   - **RF**: RF-01, Constitución §3, §4
   - **Hecho cuando**: Los endpoints `/api/auth/me`, `POST /api/profile`, `PUT /api/profile` y `DELETE /api/profile` pasan los tests unitarios y de contrato OpenAPI.
 
@@ -145,27 +145,27 @@
 
 ## Fase 6: Generador de mesociclos (RF-02)
 
-- [ ] **TASK-24**: Implementar `mesocycle.repository.ts` para persistir la estructura completa de mesociclo, semanas, sesiones y asignaciones de ejercicios.
+- [x] **TASK-24**: Implementar `mesocycle.repository.ts` para persistir la estructura completa de mesociclo, semanas, sesiones y asignaciones de ejercicios.
   - **RF**: RF-02, Constitución §3
   - **Hecho cuando**: Se guarda un mesociclo completo con sus 4–8 semanas y sesiones asociadas dentro de una sola transacción de base de datos.
 
-- [ ] **TASK-25**: Implementar algoritmo de selección y balance de patrones de movimiento según objetivo (empuje, tirón, rodilla, cadera, core) en `mesocycle-generator.service.ts`.
+- [x] **TASK-25**: Implementar algoritmo de selección y balance de patrones de movimiento según objetivo (empuje, tirón, rodilla, cadera, core) en `mesocycle-generator.service.ts`.
   - **RF**: RF-02, CA-02.1
   - **Hecho cuando**: Los tests unitarios demuestran que cada rutina generada distribuye equitativamente los 5 patrones principales.
 
-- [ ] **TASK-26**: Implementar filtro estricto de equipamiento y ajuste de volumen para atletas con solo peso corporal en `mesocycle-generator.service.ts`.
+- [x] **TASK-26**: Implementar filtro estricto de equipamiento y ajuste de volumen para atletas con solo peso corporal en `mesocycle-generator.service.ts`.
   - **RF**: RF-02, CA-02.2, CL-21
   - **Hecho cuando**: Un perfil con solo "sin equipamiento" genera una rutina 100% de peso corporal y marca advertencia si el volumen máximo posible es inferior al óptimo.
 
-- [ ] **TASK-27**: Implementar cálculo de volumen semanal por nivel de experiencia (principiante 10–14, intermedio 14–20, avanzado 18–24 series/músculo/semana) en `mesocycle-generator.service.ts`.
+- [x] **TASK-27**: Implementar cálculo de volumen semanal por nivel de experiencia (principiante 10–14, intermedio 14–20, avanzado 18–24 series/músculo/semana) en `mesocycle-generator.service.ts`.
   - **RF**: RF-02, CA-02.3
   - **Hecho cuando**: El generador asigna exactamente series dentro de los rangos de Schoenfeld según el nivel del atleta evaluado en los tests unitarios.
 
-- [ ] **TASK-28**: Implementar cálculo de periodización (lineal para fuerza, ondulante para hipertrofia/mixto) y estimación de carga inicial con ratios (`initial_load_ratio`) en `mesocycle-generator.service.ts`.
+- [x] **TASK-28**: Implementar cálculo de periodización (lineal para fuerza, ondulante para hipertrofia/mixto) y estimación de carga inicial con ratios (`initial_load_ratio`) en `mesocycle-generator.service.ts`.
   - **RF**: RF-02, CA-02.4, CA-02.5
   - **Hecho cuando**: Se calculan cargas iniciales exactas basadas en peso corporal y experiencia, y la progresión semanal aplica el esquema lineal u ondulante correspondiente.
 
-- [ ] **TASK-29**: Implementar `mesocycle.controller.ts` y `mesocycle.routes.ts` con tests unitarios y de contrato (`POST /api/mesocycles`, `GET /api/mesocycles/current`).
+- [x] **TASK-29**: Implementar `mesocycle.controller.ts` y `mesocycle.routes.ts` con tests unitarios y de contrato (`POST /api/mesocycles`, `GET /api/mesocycles/current`).
   - **RF**: RF-02, Constitución §3, §4
   - **Hecho cuando**: `POST /api/mesocycles` genera y retorna un mesociclo persistido y pasa los tests de contrato OpenAPI.
 
@@ -173,19 +173,19 @@
 
 ## Fase 7: Editor de rutina y sustitución de ejercicios (RF-03)
 
-- [ ] **TASK-30**: Implementar `exercise-swap.repository.ts` para registrar el historial de sustitución de ejercicios con motivo.
+- [x] **TASK-30**: Implementar `exercise-swap.repository.ts` para registrar el historial de sustitución de ejercicios con motivo.
   - **RF**: RF-03, CA-03.4, Constitución §3
   - **Hecho cuando**: Las inserciones en la tabla `exercise_swap` persisten `assignment_id`, `original_exercise_id`, `new_exercise_id` y `reason`.
 
-- [ ] **TASK-31**: Implementar lógica de búsqueda de alternativas compatibles filtradas por equipamiento del atleta en `routine-editor.service.ts`.
+- [x] **TASK-31**: Implementar lógica de búsqueda de alternativas compatibles filtradas por equipamiento del atleta en `routine-editor.service.ts`.
   - **RF**: RF-03, CA-03.1, CA-03.2
   - **Hecho cuando**: Si existen alternativas con el equipamiento del usuario se devuelven ordenadas; si no hay ninguna compatible, se retorna lista vacía con mensaje "No se encontró alternativa con tu equipamiento".
 
-- [ ] **TASK-32**: Implementar sustitución de ejercicio en la asignación (`swapExercise`) y registro de motivo en `routine-editor.service.ts`.
+- [x] **TASK-32**: Implementar sustitución de ejercicio en la asignación (`swapExercise`) y registro de motivo en `routine-editor.service.ts`.
   - **RF**: RF-03, CA-03.3, CA-03.4
   - **Hecho cuando**: La asignación de ejercicio en la sesión se actualiza con el nuevo ejercicio y el mesociclo refleja el cambio en cascada.
 
-- [ ] **TASK-33**: Implementar `routine.controller.ts` y `routine.routes.ts` con tests unitarios y de contrato (`GET /api/exercises/:id/alternatives`, `POST /api/assignments/:id/swap`).
+- [x] **TASK-33**: Implementar `routine.controller.ts` y `routine.routes.ts` con tests unitarios y de contrato (`GET /api/exercises/:id/alternatives`, `POST /api/assignments/:id/swap`).
   - **RF**: RF-03, Constitución §3, §4
   - **Hecho cuando**: El endpoint de swap valida el motivo, aplica el cambio y responde 200 pasando el test de contrato OpenAPI.
 
@@ -193,15 +193,15 @@
 
 ## Fase 8: Sesión y check-in pre-entreno (RF-04)
 
-- [ ] **TASK-34**: Implementar `session.repository.ts` y `checkin.repository.ts` para gestión de ciclo de vida de sesiones y check-ins de fatiga/dolor.
+- [x] **TASK-34**: Implementar `session.repository.ts` y `checkin.repository.ts` para gestión de ciclo de vida de sesiones y check-ins de fatiga/dolor.
   - **RF**: RF-04, Constitución §3
   - **Hecho cuando**: Se puede crear una sesión en estado `in_progress`, registrar su check-in y verificar que no se permita más de un check-in por sesión (error 409).
 
-- [ ] **TASK-35**: Implementar `checkin.service.ts` con validación de escala de fatiga (1–5) y registro de articulaciones bilaterales con intensidad (leve, moderada, severa).
+- [x] **TASK-35**: Implementar `checkin.service.ts` con validación de escala de fatiga (1–5) y registro de articulaciones bilaterales con intensidad (leve, moderada, severa).
   - **RF**: RF-04, CA-04.1, CA-04.2, CA-04.3, CA-04.4
   - **Hecho cuando**: `checkin.service.test.ts` valida que se persistan todas las articulaciones seleccionadas con su lado (izq/der) e intensidad, rechazando valores fuera de rango.
 
-- [ ] **TASK-36**: Implementar endpoints de sesión y check-in en `session.controller.ts` y `session.routes.ts` (`POST /api/sessions`, `POST /api/sessions/:id/checkin`).
+- [x] **TASK-36**: Implementar endpoints de sesión y check-in en `session.controller.ts` y `session.routes.ts` (`POST /api/sessions`, `POST /api/sessions/:id/checkin`).
   - **RF**: RF-04, Constitución §3, §4
   - **Hecho cuando**: Los endpoints de creación de sesión y envío de check-in responden status 201 y cumplen las especificaciones de contrato OpenAPI.
 
@@ -209,19 +209,19 @@
 
 ## Fase 9: Registro de series y reporte de molestia (RF-05, RF-06)
 
-- [ ] **TASK-37**: Implementar `set-log.repository.ts` y `pain-report.repository.ts` con operaciones CRUD de series y reporte de dolor por ejercicio.
+- [x] **TASK-37**: Implementar `set-log.repository.ts` y `pain-report.repository.ts` con operaciones CRUD de series y reporte de dolor por ejercicio.
   - **RF**: RF-05, RF-06, Constitución §3
   - **Hecho cuando**: Las operaciones de inserción, actualización, eliminación de series y persistencia de molestias por ejercicio ejecutan con integridad referencial garantizada.
 
-- [ ] **TASK-38**: Implementar `set-logger.service.ts` con validación de RIR (0–5), peso (≥ 0 kg para peso corporal), repeticiones y edición/borrado durante sesión activa.
+- [x] **TASK-38**: Implementar `set-logger.service.ts` con validación de RIR (0–5), peso (≥ 0 kg para peso corporal), repeticiones y edición/borrado durante sesión activa.
   - **RF**: RF-05, CA-05.1, CA-05.2, CA-05.3, CL-05
   - **Hecho cuando**: `set-logger.service.test.ts` comprueba que no se registren series con RIR > 5, permite peso 0 kg y bloquea modificaciones en sesiones finalizadas.
 
-- [ ] **TASK-39**: Implementar `pain-report.service.ts` para capturar reportes opcionales de molestia articular post-ejercicio.
+- [x] **TASK-39**: Implementar `pain-report.service.ts` para capturar reportes opcionales de molestia articular post-ejercicio.
   - **RF**: RF-06, CA-06.1, CA-06.2, CA-06.3
   - **Hecho cuando**: Se registra la molestia vinculada a la sesión, ejercicio y articulación, persistiendo la intensidad para el motor de ajuste de RF-08.
 
-- [ ] **TASK-40**: Implementar endpoints de series, dolor y finalización de sesión (`POST /api/sessions/:id/sets`, `PUT /api/sets/:id`, `DELETE /api/sets/:id`, `POST /api/sessions/:id/pain-reports`, `PATCH /api/sessions/:id/complete`).
+- [x] **TASK-40**: Implementar endpoints de series, dolor y finalización de sesión (`POST /api/sessions/:id/sets`, `PUT /api/sets/:id`, `DELETE /api/sets/:id`, `POST /api/sessions/:id/pain-reports`, `PATCH /api/sessions/:id/complete`).
   - **RF**: RF-05, RF-06, Constitución §3, §4
   - **Hecho cuando**: Todos los endpoints de series y dolor pasan los tests unitarios y de contrato OpenAPI con respuestas 200/201/204.
 
@@ -229,23 +229,23 @@
 
 ## Fase 10: Motor de sobrecarga progresiva (RF-07)
 
-- [ ] **TASK-41**: Implementar función de cálculo de racha de cumplimiento exitoso (`calculateStreak`) en `progression.service.ts`.
+- [x] **TASK-41**: Implementar función de cálculo de racha de cumplimiento exitoso (`calculateStreak`) en `progression.service.ts`.
   - **RF**: RF-07, CA-07.1, CA-07.4
   - **Hecho cuando**: Los tests unitarios verifican el conteo exacto de sesiones consecutivas cumpliendo reps objetivo con RIR ≥ objetivo en la ventana evaluada.
 
-- [ ] **TASK-42**: Implementar reglas de incremento de carga por nivel (principiante: 1 sesión / +5kg compuesto; intermedio: 2 sesiones / +2.5kg; avanzado: 3 sesiones / +2.5kg; monoarticulares +1–2kg) en `progression.service.ts`.
+- [x] **TASK-42**: Implementar reglas de incremento de carga por nivel (principiante: 1 sesión / +5kg compuesto; intermedio: 2 sesiones / +2.5kg; avanzado: 3 sesiones / +2.5kg; monoarticulares +1–2kg) en `progression.service.ts`.
   - **RF**: RF-07, CA-07.1
   - **Hecho cuando**: `progression.service.test.ts` valida los incrementos de carga exactos para cada nivel y tipo de ejercicio según la tabla de RF-07.
 
-- [ ] **TASK-43**: Implementar regla de doble progresión cuando no hay disco disponible o se alcanza el techo de repeticiones en `progression.service.ts`.
+- [x] **TASK-43**: Implementar regla de doble progresión cuando no hay disco disponible o se alcanza el techo de repeticiones en `progression.service.ts`.
   - **RF**: RF-07, CA-07.2
   - **Hecho cuando**: El servicio sugiere aumentar 1 repetición por serie manteniendo el peso cuando no es viable subir carga en kilos.
 
-- [ ] **TASK-44**: Implementar manejo de fallos acumulados (1 fallo: mantener; 2 fallos: -5%; 3 fallos: deload -10%) y penalización por inactividad (>2 semanas: -10%) en `progression.service.ts`.
+- [x] **TASK-44**: Implementar manejo de fallos acumulados (1 fallo: mantener; 2 fallos: -5%; 3 fallos: deload -10%) y penalización por inactividad (>2 semanas: -10%) en `progression.service.ts`.
   - **RF**: RF-07, CA-07.3, CA-07.5
   - **Hecho cuando**: Los tests unitarios simulan 1, 2 y 3 fallos consecutivos y periodos de inactividad, confirmando los ajustes de carga correspondientes.
 
-- [ ] **TASK-45**: Implementar endpoint de sugerencia de progresión (`GET /api/assignments/:id/progression`) en `progression.controller.ts` y `progression.routes.ts`.
+- [x] **TASK-45**: Implementar endpoint de sugerencia de progresión (`GET /api/assignments/:id/progression`) en `progression.controller.ts` y `progression.routes.ts`.
   - **RF**: RF-07, Constitución §3, §4
   - **Hecho cuando**: El endpoint retorna la acción calculada (`increase_load`, `increase_reps`, `maintain`, `reduce`, `deload`) con explicación detallada en español y pasa el test de contrato.
 
@@ -253,23 +253,23 @@
 
 ## Fase 11: Ajuste por fatiga y dolor articular (RF-08)
 
-- [ ] **TASK-46**: Implementar matriz de mapeo anatómico entre articulaciones y ejercicios en `fatigue-adjuster.service.ts`.
+- [x] **TASK-46**: Implementar matriz de mapeo anatómico entre articulaciones y ejercicios en `fatigue-adjuster.service.ts`.
   - **RF**: RF-08, CA-08.1
   - **Hecho cuando**: La función mapea correctamente qué ejercicios estresan hombro, codo, muñeca, columna lumbar, cadera, rodilla y tobillo.
 
-- [ ] **TASK-47**: Implementar reglas de reducción por dolor articular moderado (1 sesión: -30% volumen; 2+ sesiones: -50% volumen y -10% carga) en `fatigue-adjuster.service.ts`.
+- [x] **TASK-47**: Implementar reglas de reducción por dolor articular moderado (1 sesión: -30% volumen; 2+ sesiones: -50% volumen y -10% carga) en `fatigue-adjuster.service.ts`.
   - **RF**: RF-08, CA-08.2
   - **Hecho cuando**: Los tests unitarios confirman el cálculo exacto de series reducidas y redondeo seguro hacia abajo.
 
-- [ ] **TASK-48**: Implementar exclusión por dolor severo, sustitución automática o advertencia de patrón completo comprometido en `fatigue-adjuster.service.ts`.
+- [x] **TASK-48**: Implementar exclusión por dolor severo, sustitución automática o advertencia de patrón completo comprometido en `fatigue-adjuster.service.ts`.
   - **RF**: RF-08, CA-08.3, CA-08.5, D-20
   - **Hecho cuando**: Un dolor severo excluye el ejercicio, busca sustituto seguro o emite aviso "Patrón no entrenable por dolor severo en rodilla" cuando no hay alternativa.
 
-- [ ] **TASK-49**: Implementar detección de fatiga pre-sesión sostenida (fatiga ≥ 4 durante 2 sesiones consecutivas) para gatillar deload reactivo en `fatigue-adjuster.service.ts`.
+- [x] **TASK-49**: Implementar detección de fatiga pre-sesión sostenida (fatiga ≥ 4 durante 2 sesiones consecutivas) para gatillar deload reactivo en `fatigue-adjuster.service.ts`.
   - **RF**: RF-08, CA-08.4
   - **Hecho cuando**: El servicio detecta fatiga alta repetida y programa descarga reactiva inmediata reduciendo volumen en un 40%.
 
-- [ ] **TASK-50**: Integrar `fatigue-adjuster.service.ts` con `progression.service.ts` y verificar precedencia de reglas en tests unitarios.
+- [x] **TASK-50**: Integrar `fatigue-adjuster.service.ts` con `progression.service.ts` y verificar precedencia de reglas en tests unitarios.
   - **RF**: RF-07, RF-08, D-20
   - **Hecho cuando**: Ante múltiples reportes de dolor, prevalece la severidad máxima y los ajustes de dolor sobreescriben la sobrecarga estándar.
 
@@ -277,11 +277,11 @@
 
 ## Fase 12: Rotación de mesociclo y semana de descarga (RF-10)
 
-- [ ] **TASK-51**: Implementar lógica de generación y aplicación de semana de descarga programada (última semana: -40% volumen, -10% carga) en `mesocycle-rotation.service.ts`.
+- [x] **TASK-51**: Implementar lógica de generación y aplicación de semana de descarga programada (última semana: -40% volumen, -10% carga) en `mesocycle-rotation.service.ts`.
   - **RF**: RF-10, CA-10.2
   - **Hecho cuando**: La semana N del mesociclo (4, 6 u 8) contiene exactamente el 60% de las series habituales y 90% de la carga con RIR +1.
 
-- [ ] **TASK-52**: Implementar algoritmo de rotación de mesociclo (preservar compuestos principales, rotar ejercicios accesorios por variantes del mismo patrón) en `mesocycle-rotation.service.ts`.
+- [x] **TASK-52**: Implementar algoritmo de rotación de mesociclo (preservar compuestos principales, rotar ejercicios accesorios por variantes del mismo patrón) en `mesocycle-rotation.service.ts`.
   - **RF**: RF-10, CA-10.1, CA-10.4
   - **Hecho cuando**: Al generar un nuevo mesociclo, los ejercicios principales se mantienen con su progresión histórica y los accesorios se renuevan respetando historial de swaps previos.
 

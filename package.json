@@ -15,6 +15,7 @@
     "test": "npm run test --prefix backend && npm run test --prefix frontend",
     "test:unit": "npm run test:unit --prefix backend",
     "db:migrate": "npm run db:migrate --prefix backend",
+    "db:seed": "npm run db:seed --prefix backend",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:openapi": "redocly lint contract/openapi.yaml",
