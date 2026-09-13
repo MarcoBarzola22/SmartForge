@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SetLogger } from './SetLogger';
 import { PainReportModal } from './PainReportModal';
 import { apiClient } from '../../api/client';
+import { queryClient } from '../../api/query-client';
+import { offlineStore } from '../../stores/offlineStore';
 import type {
   TrainingSession,
   SessionPlan,
@@ -73,6 +76,51 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   }, [sessionPlan]);
 
   const activeAssignment: ExerciseAssignment | undefined = assignments[selectedExerciseIndex];
+
+  // Restore active session state from offlineStore on mount (T-91, RF-04, RNF-03)
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreActiveSession = async () => {
+      try {
+        const stored = await offlineStore.getActiveSession();
+        if (stored?.session && isMounted) {
+          const storedSession = stored.session;
+          if (
+            storedSession.id === session.id ||
+            storedSession.session_plan_id === session.session_plan_id ||
+            !session.id
+          ) {
+            setSession((prev) => {
+              const currentSetsCount = prev.set_logs?.length || 0;
+              const storedSetsCount = storedSession.set_logs?.length || 0;
+              if (storedSetsCount >= currentSetsCount) {
+                return {
+                  ...prev,
+                  ...storedSession,
+                  set_logs: storedSession.set_logs || prev.set_logs,
+                  pain_reports: storedSession.pain_reports || prev.pain_reports,
+                  checkin: storedSession.checkin || prev.checkin
+                };
+              }
+              return prev;
+            });
+          }
+        } else if (session.status === 'in_progress') {
+          // Immediately persist active session to offlineStore so tab-switching won't lose it
+          await offlineStore.saveActiveSession(session, sessionPlan);
+        }
+      } catch (err) {
+        console.error('Failed to restore active session from offlineStore:', err);
+      }
+    };
+
+    restoreActiveSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Fetch progression suggestion whenever the active assignment changes
   useEffect(() => {
@@ -164,10 +212,16 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     setErrorMessage(null);
     try {
       const createdSet = await apiClient.sessions.logSet(session.id, setData);
-      setSession((prev) => ({
-        ...prev,
-        set_logs: [...(prev.set_logs || []), createdSet]
-      }));
+      setSession((prev) => {
+        const updated = {
+          ...prev,
+          set_logs: [...(prev.set_logs || []), createdSet]
+        };
+        offlineStore.saveActiveSession(updated, sessionPlan).catch((err) => {
+          console.error('Failed to persist active session after logging set:', err);
+        });
+        return updated;
+      });
     } catch (err: unknown) {
       console.error('Error logging set:', err);
       setErrorMessage(err instanceof Error ? err.message : 'Error al registrar serie');
@@ -182,10 +236,16 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     setErrorMessage(null);
     try {
       const report: PainReport = await apiClient.sessions.reportPain(session.id, painData);
-      setSession((prev) => ({
-        ...prev,
-        pain_reports: [...(prev.pain_reports || []), report]
-      }));
+      setSession((prev) => {
+        const updated = {
+          ...prev,
+          pain_reports: [...(prev.pain_reports || []), report]
+        };
+        offlineStore.saveActiveSession(updated, sessionPlan).catch((err) => {
+          console.error('Failed to persist active session after reporting pain:', err);
+        });
+        return updated;
+      });
       setIsPainModalOpen(false);
     } catch (err: unknown) {
       console.error('Error reporting pain:', err);
@@ -195,23 +255,62 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     }
   };
 
-  // Handle finishing/completing the entire session (RF-05, RF-06)
+  // Handle finishing/completing the entire session via React Query mutation (RF-05, T-86, T-91, T-92)
+  const completeSessionMutation = useMutation(
+    {
+      mutationFn: (sessionId: string) => apiClient.sessions.complete(sessionId),
+      onSuccess: async (completedSession) => {
+        await offlineStore.clearActiveSession(session.id);
+        if (session.session_plan_id) {
+          try {
+            const stored = JSON.parse(localStorage.getItem('smartforge_completed_plans') || '[]');
+            if (!stored.includes(session.session_plan_id)) {
+              stored.push(session.session_plan_id);
+              localStorage.setItem('smartforge_completed_plans', JSON.stringify(stored));
+            }
+          } catch {
+            // ignore
+          }
+        }
+        await queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
+        setSession(completedSession);
+        setIsCompletedView(true);
+        onFinishSession?.();
+      },
+      onError: async (err: unknown) => {
+        console.error('Error completing session:', err);
+        await offlineStore.clearActiveSession(session.id);
+        if (session.session_plan_id) {
+          try {
+            const stored = JSON.parse(localStorage.getItem('smartforge_completed_plans') || '[]');
+            if (!stored.includes(session.session_plan_id)) {
+              stored.push(session.session_plan_id);
+              localStorage.setItem('smartforge_completed_plans', JSON.stringify(stored));
+            }
+          } catch {
+            // ignore
+          }
+        }
+        await queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
+        // Fallback: update local state if already completed
+        setSession((prev) => ({
+          ...prev,
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        }));
+        setIsCompletedView(true);
+      }
+    },
+    queryClient
+  );
+
   const handleCompleteSession = async () => {
     setIsCompletingSession(true);
     setErrorMessage(null);
     try {
-      const completedSession = await apiClient.sessions.complete(session.id);
-      setSession(completedSession);
-      setIsCompletedView(true);
-    } catch (err: unknown) {
-      console.error('Error completing session:', err);
-      // Fallback: update local state if already completed
-      setSession((prev) => ({
-        ...prev,
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      }));
-      setIsCompletedView(true);
+      await completeSessionMutation.mutateAsync(session.id);
+    } catch {
+      // Error is handled in onError callback of mutation
     } finally {
       setIsCompletingSession(false);
     }
@@ -378,8 +477,8 @@ export const SessionPage: React.FC<SessionPageProps> = ({
               variant="outline"
               size="sm"
               onClick={handleCompleteSession}
-              isLoading={isCompletingSession}
-              disabled={isCompletingSession}
+              isLoading={isCompletingSession || completeSessionMutation.isPending}
+              disabled={isCompletingSession || completeSessionMutation.isPending}
               className="text-xs border-emerald-600/50 text-emerald-400 hover:bg-emerald-950/40 touch-target min-h-[48px]"
             >
               Finalizar Sesión
@@ -502,25 +601,25 @@ export const SessionPage: React.FC<SessionPageProps> = ({
         {activeAssignment && (
           <Card
             data-testid="progression-suggestion-card"
-            className="bg-neutral-900/90 border-neutral-800 p-5 rounded-xl shadow-xl flex flex-col gap-4 relative overflow-hidden"
+            className="bg-neutral-900/90 border-neutral-800 p-3.5 sm:p-5 rounded-xl shadow-xl flex flex-col gap-3.5 sm:gap-4 relative overflow-hidden w-full min-w-0"
           >
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800/80 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <h2 className="text-base font-semibold text-white">Sobrecarga Progresiva Sugerida</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-neutral-800/80 pb-3 min-w-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0 flex-shrink-0" />
+                  <h2 className="text-sm sm:text-base font-semibold text-white truncate">Sobrecarga Progresiva Sugerida</h2>
                 </div>
-                <p className="text-xs text-neutral-400 mt-0.5">
+                <p className="text-xs text-neutral-400 mt-0.5 break-words">
                   Recomendación basada en el historial de rendimiento de las últimas sesiones
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
                 {suggestionDetail && (
                   <Badge
                     variant={getActionBadgeVariant(suggestionDetail.action)}
-                    className="self-start sm:self-auto font-medium text-xs px-2.5 py-1"
+                    className="self-start sm:self-auto font-medium text-xs px-2.5 py-1 shrink-0"
                   >
                     {getActionLabel(suggestionDetail.action)}
                   </Badge>
@@ -530,62 +629,64 @@ export const SessionPage: React.FC<SessionPageProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsPainModalOpen(true)}
-                  className="text-xs text-neutral-400 hover:text-red-400 hover:bg-red-950/30 flex items-center gap-1.5 touch-target min-h-[48px] px-3"
+                  className="text-xs text-neutral-400 hover:text-red-400 hover:bg-red-950/30 flex items-center gap-1.5 touch-target min-h-[48px] px-3 shrink-0"
                 >
-                  <HeartCrack className="w-3.5 h-3.5 text-red-400" />
-                  <span>Reportar Molestia</span>
+                  <HeartCrack className="w-3.5 h-3.5 text-red-400 shrink-0 flex-shrink-0" />
+                  <span className="whitespace-nowrap">Reportar Molestia</span>
                 </Button>
               </div>
             </div>
 
             {isLoadingSuggestion ? (
               <div className="py-4 flex items-center justify-center gap-2 text-neutral-400 text-sm animate-pulse">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 shrink-0 flex-shrink-0" />
                 <span>Calculando sugerencia de progresión...</span>
               </div>
             ) : suggestionDetail ? (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Target Metric Highlights */}
-                <div className="flex items-center gap-3 p-3 bg-neutral-950/60 rounded-lg border border-neutral-800">
-                  <div className="p-2 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/40">
-                    <Dumbbell className="w-5 h-5" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4 w-full min-w-0">
+                {/* Target Metric Highlights - Mini Card 1: Carga */}
+                <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-neutral-950/60 rounded-xl border border-neutral-800 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/40 shrink-0 flex-shrink-0">
+                    <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 flex-shrink-0" />
                   </div>
-                  <div>
-                    <div className="text-xs text-neutral-400">Carga Sugerida</div>
-                    <div className="text-lg font-bold font-mono text-white">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] sm:text-xs text-neutral-400 truncate">Carga Sugerida</div>
+                    <div className="text-base sm:text-lg font-bold font-mono text-white truncate">
                       {suggestionDetail.suggested_load_kg} kg
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-neutral-950/60 rounded-lg border border-neutral-800">
-                  <div className="p-2 bg-blue-950/60 text-blue-400 rounded-lg border border-blue-800/40">
-                    <ArrowRight className="w-5 h-5" />
+                {/* Mini Card 2: Repeticiones */}
+                <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-neutral-950/60 rounded-xl border border-neutral-800 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-blue-950/60 text-blue-400 rounded-lg border border-blue-800/40 shrink-0 flex-shrink-0">
+                    <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 flex-shrink-0" />
                   </div>
-                  <div>
-                    <div className="text-xs text-neutral-400">Repeticiones</div>
-                    <div className="text-lg font-bold font-mono text-white">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] sm:text-xs text-neutral-400 truncate">Repeticiones</div>
+                    <div className="text-base sm:text-lg font-bold font-mono text-white truncate">
                       {suggestionDetail.suggested_reps} reps
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-neutral-950/60 rounded-lg border border-neutral-800">
-                  <div className="p-2 bg-purple-950/60 text-purple-400 rounded-lg border border-purple-800/40">
-                    <Flame className="w-5 h-5" />
+                {/* Mini Card 3: Racha de Cumplimiento (ocupa 2 columnas en <640px para evitar aplastamiento) */}
+                <div className="col-span-2 sm:col-span-1 flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-neutral-950/60 rounded-xl border border-neutral-800 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-purple-950/60 text-purple-400 rounded-lg border border-purple-800/40 shrink-0 flex-shrink-0">
+                    <Flame className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 flex-shrink-0" />
                   </div>
-                  <div>
-                    <div className="text-xs text-neutral-400">Racha de Cumplimiento</div>
-                    <div className="text-sm font-semibold text-white">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] sm:text-xs text-neutral-400 truncate">Racha de Cumplimiento</div>
+                    <div className="text-xs sm:text-sm font-semibold text-white truncate">
                       {progressionSuggestion?.streak_count || 0} / {progressionSuggestion?.window_sessions || 2} sesiones
                     </div>
                   </div>
                 </div>
 
                 {/* Explanation in Spanish (Constitution §6) */}
-                <div className="col-span-1 md:col-span-3 text-xs text-neutral-300 bg-neutral-950/40 p-3 rounded-lg border border-neutral-800/60 flex items-start gap-2">
-                  <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                  <p className="leading-relaxed">
+                <div className="col-span-2 sm:col-span-3 text-xs text-neutral-300 bg-neutral-950/40 p-3 rounded-xl border border-neutral-800/60 flex items-start gap-2.5 min-w-0">
+                  <Info className="w-4 h-4 text-emerald-400 shrink-0 flex-shrink-0 mt-0.5" />
+                  <p className="leading-relaxed min-w-0 break-words flex-1">
                     {suggestionDetail.reason_es}
                   </p>
                 </div>

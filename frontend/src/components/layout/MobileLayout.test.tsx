@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import React from 'react';
 import { render, screen, act } from '@testing-library/react';
 import { MobileLayout } from './MobileLayout';
 
@@ -139,7 +138,7 @@ describe('T-16: MobileLayout.tsx con safe-areas y ajuste dinámico (RF-02, RF-03
 
       // Simular apertura de teclado virtual (< 75% de 800 = < 600px)
       act(() => {
-        window.visualViewport!.height = 420;
+        (window.visualViewport as any).height = 420;
         listeners['resize']?.forEach((cb) => cb());
       });
 
@@ -161,7 +160,7 @@ describe('T-16: MobileLayout.tsx con safe-areas y ajuste dinámico (RF-02, RF-03
 
       // Al emerger el teclado a 450px, availableHeight = 450 - 64 = 386px
       act(() => {
-        window.visualViewport!.height = 450;
+        (window.visualViewport as any).height = 450;
         listeners['resize']?.forEach((cb) => cb());
       });
 

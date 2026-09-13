@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { MobileLayout } from '../../components/layout/MobileLayout';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
 import { Modal } from '../../components/ui/Modal';
-import { KeyboardActionBar } from '../../components/layout/KeyboardActionBar';
 import { EQUIPMENT_TAXONOMY } from '../../constants/equipment';
+import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
+import { queryClient } from '../../api/query-client';
 import { useAuth } from '../../hooks/useAuth';
 import type {
   ExperienceLevel,
@@ -16,7 +16,7 @@ import type {
   CreateProfileRequest,
   UpdateProfileRequest
 } from '../../api';
-import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info, ArrowDown } from 'lucide-react';
+import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info } from 'lucide-react';
 
 export interface ProfilePageProps {
   mode?: 'create' | 'edit';
@@ -33,7 +33,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onProfileUpdated,
   onCancel
 }) => {
-  const { user, restoreSession } = useAuth();
+  const { user, restoreSession, logout } = useAuth();
   const currentProfile = initialProfile ?? (mode === 'edit' ? user : null);
   const isEditMode = mode === 'edit' || Boolean(initialProfile);
 
@@ -62,8 +62,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoalChangeModalOpen, setIsGoalChangeModalOpen] = useState(false);
 
-  // Rastreo del índice del campo enfocado para navegación secuencial con el pulgar (RF-05)
-  const activeIndexRef = React.useRef<number>(0);
 
   useEffect(() => {
     if (currentProfile) {
@@ -119,6 +117,42 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  // Mutation for updating/creating athlete profile (T-93)
+  const saveProfileMutation = useMutation(
+    {
+      mutationFn: async (payload: { isEdit: boolean; data: UpdateProfileRequest | CreateProfileRequest }) => {
+        if (payload.isEdit) {
+          return await apiClient.profile.update(payload.data as UpdateProfileRequest);
+        } else {
+          return await apiClient.profile.create(payload.data as CreateProfileRequest);
+        }
+      },
+      onSuccess: async (data, variables) => {
+        await restoreSession();
+        await queryClient.invalidateQueries({ queryKey: ['profile'] });
+        await queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
+        if (variables.isEdit) {
+          setSuccessMessage('Perfil actualizado exitosamente');
+          setIsGoalChangeModalOpen(false);
+          onProfileUpdated?.(data as AthleteProfile);
+        } else {
+          onProfileCreated?.();
+        }
+      },
+      onError: (err: any, variables) => {
+        const msg =
+          err?.data?.error?.message ||
+          err?.message ||
+          (variables.isEdit
+            ? 'Error al actualizar el perfil'
+            : 'Error al crear el perfil de atleta');
+        setServerError(msg);
+        setIsGoalChangeModalOpen(false);
+      }
+    },
+    queryClient
+  );
+
   const performSave = async () => {
     setIsSubmitting(true);
     setServerError(null);
@@ -133,11 +167,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           equipment_ids: equipmentIds
         };
 
-        const updated = await apiClient.profile.update(updatePayload);
-        await restoreSession();
-        setSuccessMessage('Perfil actualizado exitosamente');
-        setIsGoalChangeModalOpen(false);
-        onProfileUpdated?.(updated);
+        await saveProfileMutation.mutateAsync({ isEdit: true, data: updatePayload });
       } else {
         const createPayload: CreateProfileRequest = {
           name: name.trim(),
@@ -149,19 +179,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           equipment_ids: equipmentIds
         };
 
-        await apiClient.profile.create(createPayload);
-        await restoreSession();
-        onProfileCreated?.();
+        await saveProfileMutation.mutateAsync({ isEdit: false, data: createPayload });
       }
-    } catch (err: any) {
-      const msg =
-        err?.data?.error?.message ||
-        err?.message ||
-        (isEditMode
-          ? 'Error al actualizar el perfil'
-          : 'Error al crear el perfil de atleta');
-      setServerError(msg);
-      setIsGoalChangeModalOpen(false);
+    } catch {
+      // Handled in onError callback
     } finally {
       setIsSubmitting(false);
     }
@@ -183,32 +204,18 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     await performSave();
   };
 
-  // Navegación secuencial con una mano en la mitad inferior (RF-05 Thumb-Zone Initializer)
-  const handleNextField = () => {
-    const sequence: string[] = [
-      'name',
-      ...(isEditMode ? [] : ['age']),
-      'weight',
-      'experience-section',
-      'goal-section',
-      'days-section',
-      'equipment-section',
-      'submit-btn'
-    ];
 
-    const currentId = document.activeElement?.id;
-    let currentIdx = currentId && sequence.includes(currentId)
-      ? sequence.indexOf(currentId)
-      : activeIndexRef.current;
-
-    const nextIdx = (currentIdx + 1) % sequence.length;
-    activeIndexRef.current = nextIdx;
-
-    const nextTargetId = sequence[nextIdx];
-    const targetEl = document.getElementById(nextTargetId);
-    if (targetEl) {
-      targetEl.focus();
-      targetEl.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  const handleLogout = () => {
+    logout();
+    try {
+      localStorage.removeItem('smartforge_jwt');
+    } catch {
+      // localStorage may not be accessible in all environments
+    }
+    try {
+      window.location.href = '/login';
+    } catch {
+      // jsdom fallback
     }
   };
 
@@ -219,20 +226,19 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   };
 
   return (
-    <MobileLayout
-      title={isEditMode ? 'Editar Perfil' : 'Crear Perfil'}
-      subtitle={isEditMode ? 'Ajustes de Atleta' : 'Onboarding de Atleta'}
-      isOnline={true}
-      keyboardActionBar={
-        <KeyboardActionBar
-          onSave={() => handleSubmit()}
-          onCancel={handleNextField}
-          primaryLabel={isEditMode ? 'Guardar' : 'Crear'}
-          secondaryLabel="Siguiente"
-          isSubmitting={isSubmitting}
-        />
-      }
+    <div
+      data-testid="mobile-container"
+      className="w-full max-w-[390px] mx-auto flex flex-col min-h-full overflow-x-hidden"
     >
+      <header className="mb-4">
+        <h1 className="text-lg font-bold text-white">
+          {isEditMode ? 'Editar Perfil' : 'Crear Perfil'}
+        </h1>
+        <span className="text-xs text-zinc-400 font-medium">
+          {isEditMode ? 'Ajustes de Atleta' : 'Onboarding de Atleta'}
+        </span>
+      </header>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-6 w-full overflow-x-hidden">
         {serverError && (
           <Toast
@@ -268,9 +274,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               id="name"
               placeholder="Ej. Lucas Barzola"
               value={name}
-              onFocus={() => {
-                activeIndexRef.current = 0;
-              }}
               onChange={(e) => {
                 setName(e.target.value);
                 if (errors.name) setErrors((prev) => ({ ...prev, name: '' }));
@@ -287,9 +290,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 placeholder="≥ 16"
                 value={age}
                 disabled={isEditMode}
-                onFocus={() => {
-                  activeIndexRef.current = 1;
-                }}
                 onChange={(e) => {
                   setAge(e.target.value);
                   if (errors.age) setErrors((prev) => ({ ...prev, age: '' }));
@@ -305,9 +305,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 step="0.1"
                 placeholder="75.0"
                 value={weightKg}
-                onFocus={() => {
-                  activeIndexRef.current = isEditMode ? 1 : 2;
-                }}
                 onChange={(e) => {
                   setWeightKg(e.target.value);
                   if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
@@ -477,19 +474,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {isEditMode ? 'Guardar Cambios' : 'Crear Perfil y Generar Mesociclo'}
           </Button>
 
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            fullWidth
-            onClick={handleNextField}
-            data-testid="next-field-btn"
-            aria-label="Siguiente campo"
-            className="min-h-[48px] touch-target flex items-center justify-center gap-1.5"
-          >
-            <ArrowDown className="w-4 h-4" />
-            <span>Siguiente campo</span>
-          </Button>
 
           {isEditMode && onCancel && (
             <Button
@@ -503,6 +487,17 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               Cancelar
             </Button>
           )}
+
+          <Button
+            type="button"
+            variant="destructive"
+            size="md"
+            fullWidth
+            onClick={handleLogout}
+            className="min-h-[48px] touch-target"
+          >
+            Cerrar Sesión
+          </Button>
         </div>
       </form>
 
@@ -561,7 +556,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
       </Modal>
-    </MobileLayout>
+    </div>
   );
 };
 

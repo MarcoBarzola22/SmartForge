@@ -49,12 +49,14 @@ describe('TASK-73: ExerciseDetailPage - Exercise Biomechanical Detail & Video Pl
     });
   });
 
-  it('should render YouTube video embed iframe with minimal controls and loop parameters', () => {
+  it('should render external link button with target="_blank" to exercise video_url instead of iframe (T-88)', () => {
     render(<ExerciseDetailPage exercise={mockExercise} />);
 
-    const iframe = screen.getByTitle(/Demostración de Press de Banca Plano con Barra/i);
-    expect(iframe).toBeInTheDocument();
-    expect(iframe).toHaveAttribute('src', expect.stringContaining('youtube.com/embed/dQw4w9WgXcQ'));
+    const videoLink = screen.getByRole('link', { name: /Ver demostración en YouTube/i });
+    expect(videoLink).toBeInTheDocument();
+    expect(videoLink).toHaveAttribute('href', mockExercise.video_url);
+    expect(videoLink).toHaveAttribute('target', '_blank');
+    expect(videoLink).toHaveAttribute('rel', expect.stringContaining('noopener'));
   });
 
   it('should render illustrated Spanish fallback when video_url is empty or triggers error (CA-09.3, CL-14)', () => {

@@ -123,40 +123,25 @@ describe('TASK-62: LoginPage Component (RF-01, CA-01.1, Constitución §2)', () 
     });
   });
 
-  describe('T-25: Formulario de login en 1 columna, botones apilados y dianas accesibles (RF-08, RF-11, RF-14)', () => {
+  describe('T-87: Limpieza de Login y Perfil (RF-01, 100% OAuth con Google)', () => {
     const TOUCH_TARGET_REGEX = /min-h-\[(4[8-9]|[5-9][0-9])px\]|touch-target|h-12|min-h-touch/;
 
-    it('renderiza inputs de email y contraseña apilados en 1 sola columna con min-h: 48px', () => {
+    it('no renderiza campos de correo o contraseña ni botón de iniciar sesión manual', () => {
       renderWithAuth();
 
-      const emailInput = screen.getByLabelText(/correo electrónico/i);
-      const passwordInput = screen.getByLabelText(/contraseña/i);
-
-      expect(emailInput).toBeInTheDocument();
-      expect(passwordInput).toBeInTheDocument();
-
-      expect(emailInput.className).toMatch(TOUCH_TARGET_REGEX);
-      expect(passwordInput.className).toMatch(TOUCH_TARGET_REGEX);
+      expect(screen.queryByLabelText(/correo electrónico/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/contraseña/i)).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /iniciar sesión/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /olvidaste tu contraseña|recuperar contraseña/i })).not.toBeInTheDocument();
     });
 
-    it('renderiza el botón de login primario de ancho completo (w-full) con contraste azul #3B82F6 / texto #0C0C0E', () => {
+    it('renderiza exclusivamente el botón "Continuar con Google" de ancho completo con diana accesible >= 48px', () => {
       renderWithAuth();
 
-      const loginBtn = screen.getByRole('button', { name: /iniciar sesión/i });
-      expect(loginBtn).toBeInTheDocument();
-      expect(loginBtn.className).toContain('w-full');
-      expect(loginBtn.className).toMatch(TOUCH_TARGET_REGEX);
-      // Variante primaria con tokens de contraste WCAG AAA
-      expect(loginBtn.className).toMatch(/brand-primary|bg-\[#3B82F6\]/);
-      expect(loginBtn.className).toMatch(/brand-contrast|text-\[#0C0C0E\]/);
-    });
-
-    it('incluye enlace o botón de recuperación de contraseña accesible en zona inferior', () => {
-      renderWithAuth();
-
-      const forgotBtn = screen.getByRole('button', { name: /olvidaste tu contraseña|recuperar contraseña/i });
-      expect(forgotBtn).toBeInTheDocument();
-      expect(forgotBtn.className).toMatch(TOUCH_TARGET_REGEX);
+      const googleBtn = screen.getByRole('button', { name: /continuar con google/i });
+      expect(googleBtn).toBeInTheDocument();
+      expect(googleBtn.className).toContain('w-full');
+      expect(googleBtn.className).toMatch(TOUCH_TARGET_REGEX);
     });
 
     it('no genera desbordamiento horizontal en viewports de 320px', () => {

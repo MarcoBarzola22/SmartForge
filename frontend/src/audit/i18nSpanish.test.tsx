@@ -221,17 +221,8 @@ describe('T-28: Auditoría de idioma español en interfaz y mensajes visibles (R
       expect(screen.getByText('Forge')).toBeInTheDocument();
       expect(screen.getByText('Entrenador Personal Digital')).toBeInTheDocument();
 
-      // Botón primario y botón de Google
-      expect(screen.getByRole('button', { name: /iniciar sesión/i })).toBeInTheDocument();
+      // Botón de Google OAuth (100% OAuth T-87)
       expect(screen.getByRole('button', { name: /continuar con google/i })).toBeInTheDocument();
-
-      // Enlace de recuperación
-      expect(screen.getByRole('button', { name: /¿olvidaste tu contraseña\?/i })).toBeInTheDocument();
-
-      // Inputs con etiquetas y placeholders en español
-      expect(screen.getByLabelText(/correo electrónico/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/contraseña/i)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/atleta@smartforge\.com/i)).toBeInTheDocument();
 
       cleanup();
     });
@@ -289,7 +280,7 @@ describe('T-28: Auditoría de idioma español en interfaz y mensajes visibles (R
       expect(screen.getByLabelText(/nombre completo/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/peso corporal \(kg\)/i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /guardar/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /siguiente/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /cerrar sesión/i })).toBeInTheDocument();
 
       cleanup();
     });

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MobileLayout } from './components/layout/MobileLayout';
 import { BottomNav, NavTabId } from './components/navigation/BottomNav';
 import { useAuth } from './hooks/useAuth';
 import { useOfflineSync } from './hooks/useOfflineSync';
+import { offlineStore } from './stores/offlineStore';
 
 // Pages
 import { LoginPage } from './pages/auth/LoginPage';
@@ -65,6 +66,19 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<NavTabId>('routine');
   const [subView, setSubView] = useState<SubView>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
+  const [activeSession, setActiveSession] = useState<{
+    session: TrainingSession;
+    sessionPlan: SessionPlan;
+  } | null>(null);
+
+  // Restore active in-progress session on initial mount (T-91, RF-04, RNF-03)
+  useEffect(() => {
+    offlineStore.getActiveSession().then((active) => {
+      if (active && active.session?.status === 'in_progress' && active.sessionPlan) {
+        setActiveSession(active);
+      }
+    });
+  }, []);
 
   // ---- Auth loading splash ----
   if (authLoading) {
@@ -125,6 +139,10 @@ export const App: React.FC = () => {
         return;
       }
 
+      const activeData = { session, sessionPlan: targetPlan };
+      setActiveSession(activeData);
+      await offlineStore.saveActiveSession(session, targetPlan);
+
       // Show check-in modal first (it's mandatory per RF-04)
       setSubView({
         kind: 'activeSession',
@@ -152,13 +170,16 @@ export const App: React.FC = () => {
   };
 
   const handleTabChange = (tab: NavTabId) => {
-    // Clear sub-views when switching tabs
-    setSubView(null);
+    // Clear non-session sub-views when switching tabs
+    if (subView?.kind !== 'activeSession') {
+      setSubView(null);
+    }
     setShowCheckIn(false);
     setActiveTab(tab);
   };
 
   const handleFinishSession = () => {
+    setActiveSession(null);
     setSubView(null);
     setActiveTab('routine');
   };
@@ -166,12 +187,13 @@ export const App: React.FC = () => {
   // ---- Tab metadata ----
 
   const getTabMeta = (): { title: string; subtitle: string } => {
-    if (subView) {
+    if (subView && activeTab === 'session' && subView.kind === 'activeSession') {
+      return { title: 'Sesión Activa', subtitle: 'Registro en vivo' };
+    }
+    if (subView && subView.kind !== 'activeSession') {
       switch (subView.kind) {
         case 'routineEditor':
           return { title: 'Editor de Rutina', subtitle: 'Revisar y modificar ejercicios' };
-        case 'activeSession':
-          return { title: 'Sesión Activa', subtitle: 'Registro en vivo' };
         case 'exerciseDetail':
           return {
             title: subView.exercise?.name ?? 'Detalle',
@@ -180,9 +202,10 @@ export const App: React.FC = () => {
       }
     }
 
+    const currentActive = activeSession || (subView?.kind === 'activeSession' ? subView : null);
     const defaults: Record<NavTabId, { title: string; subtitle: string }> = {
       routine: { title: 'Rutina', subtitle: 'Mesociclo Activo' },
-      session: { title: 'Sesión', subtitle: 'Registro en Vivo' },
+      session: { title: 'Sesión', subtitle: currentActive ? 'Registro en Vivo' : 'Sin Sesión' },
       catalog: { title: 'Catálogo', subtitle: 'Biblioteca de Ejercicios' },
       profile: { title: 'Perfil', subtitle: 'Ajustes del Atleta' }
     };
@@ -192,7 +215,7 @@ export const App: React.FC = () => {
   const meta = getTabMeta();
 
   // ---- Has an active session in sub-view? ----
-  const hasActiveSession = subView?.kind === 'activeSession';
+  const hasActiveSession = ((subView?.kind === 'activeSession') || !!activeSession) && activeTab === 'session';
 
   // ---- Render the active content ----
 
@@ -211,24 +234,27 @@ export const App: React.FC = () => {
           );
 
         case 'activeSession':
-          return (
-            <>
-              <SessionPage
-                session={subView.session}
-                sessionPlan={subView.sessionPlan}
-                onFinishSession={handleFinishSession}
-                onBack={handleBackFromSubView}
-              />
-              {showCheckIn && (
-                <CheckInModal
-                  isOpen={showCheckIn}
-                  sessionId={subView.session.id}
-                  onClose={() => setShowCheckIn(false)}
-                  onCheckInSuccess={() => setShowCheckIn(false)}
+          if (activeTab === 'session') {
+            return (
+              <>
+                <SessionPage
+                  session={subView.session}
+                  sessionPlan={subView.sessionPlan}
+                  onFinishSession={handleFinishSession}
+                  onBack={handleBackFromSubView}
                 />
-              )}
-            </>
-          );
+                {showCheckIn && (
+                  <CheckInModal
+                    isOpen={showCheckIn}
+                    sessionId={subView.session.id}
+                    onClose={() => setShowCheckIn(false)}
+                    onCheckInSuccess={() => setShowCheckIn(false)}
+                  />
+                )}
+              </>
+            );
+          }
+          break;
 
         case 'exerciseDetail':
           return (
@@ -251,7 +277,19 @@ export const App: React.FC = () => {
           />
         );
 
-      case 'session':
+      case 'session': {
+        const active = activeSession || (subView?.kind === 'activeSession' ? subView : null);
+        if (active && active.sessionPlan) {
+          return (
+            <SessionPage
+              session={active.session}
+              sessionPlan={active.sessionPlan}
+              onFinishSession={handleFinishSession}
+              onBack={handleBackFromSubView}
+            />
+          );
+        }
+
         // No active session → show prompt to start one from the routine tab
         return (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-10 px-4 space-y-4">
@@ -269,6 +307,7 @@ export const App: React.FC = () => {
             </div>
           </div>
         );
+      }
 
       case 'catalog':
         return (

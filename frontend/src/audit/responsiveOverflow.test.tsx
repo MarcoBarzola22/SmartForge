@@ -302,7 +302,7 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
         </AuthContext.Provider>
       );
 
-      const loginButton = screen.getByRole('button', { name: /iniciar sesión/i });
+      const loginButton = screen.getByRole('button', { name: /continuar con google/i });
       expect(loginButton).toBeInTheDocument();
       expect(loginButton.className).toMatch(/min-h-\[(4[8-9]|[5-9][0-9])px\]|touch-target|h-12/);
       expect(loginButton.className).toContain('w-full');
@@ -378,10 +378,9 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
         </AuthContext.Provider>
       );
 
-      const loginButton = screen.getByRole('button', { name: /iniciar sesión/i });
-      // Botón primario oficial: fondo brand primary y texto negro carbón
-      expect(loginButton.className).toMatch(/bg-brand-primary|bg-primary/);
-      expect(loginButton.className).toMatch(/text-brand-contrast|text-primary-foreground/);
+      const loginButton = screen.getByRole('button', { name: /continuar con google/i });
+      expect(loginButton).toBeInTheDocument();
+      expect(loginButton.className).toMatch(/touch-target/);
 
       cleanup();
     });

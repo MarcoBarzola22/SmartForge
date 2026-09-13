@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SessionPage } from './SessionPage';
 import { apiClient } from '../../api/client';
+import { queryClient } from '../../api/query-client';
 import { AuthContext, AuthContextType } from '../../context/AuthContext';
+import { offlineStore } from '../../stores/offlineStore';
 import type {
   TrainingSession,
   SessionPlan,
@@ -393,6 +395,7 @@ describe('TASK-70: SessionPage - Progressive Overload & Fatigue/Pain Adjustments
     });
 
     const onFinishSpy = vi.fn();
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     render(
       <AuthContext.Provider value={mockAuthContext}>
@@ -435,11 +438,60 @@ describe('TASK-70: SessionPage - Progressive Overload & Fatigue/Pain Adjustments
 
     await waitFor(() => {
       expect(completeSessionSpy).toHaveBeenCalledWith('sess-active-1');
+      expect(invalidateSpy).toHaveBeenCalled();
+      expect(onFinishSpy).toHaveBeenCalled();
       expect(screen.getByTestId('session-summary-view')).toBeInTheDocument();
       expect(screen.getByText(/¡Sesión Completada!/i)).toBeInTheDocument();
       expect(screen.getByText(/Resumen de Rendimiento/i)).toBeInTheDocument();
       // Total volume: 80*8 + 100*6 = 640 + 600 = 1,240 kg
       expect(screen.getByText(/1,240 kg|1240 kg/i)).toBeInTheDocument();
+    });
+  });
+
+  it('should resume active session in_progress from offline store on mount and restore marked sets (T-91, RF-04, RNF-03)', async () => {
+    const activeStoredSession: TrainingSession = {
+      ...activeTrainingSession,
+      status: 'in_progress',
+      set_logs: [
+        {
+          id: 'set-restored-1',
+          session_id: 'sess-active-1',
+          exercise_id: 'ex-bench',
+          set_number: 1,
+          weight_kg: 85,
+          reps_completed: 10,
+          rir: 1,
+          client_timestamp: '2026-09-12T10:05:00Z',
+          created_at: '2026-09-12T10:05:00Z'
+        }
+      ]
+    };
+
+    vi.spyOn(offlineStore, 'getActiveSession').mockResolvedValue({
+      session: activeStoredSession,
+      sessionPlan: sampleSessionPlan
+    });
+
+    // Mount SessionPage with empty set_logs in props (simulating returning to tab)
+    const initialSessionWithoutSets: TrainingSession = {
+      ...activeTrainingSession,
+      set_logs: []
+    };
+
+    render(
+      <AuthContext.Provider value={mockAuthContext}>
+        <SessionPage
+          session={initialSessionWithoutSets}
+          sessionPlan={sampleSessionPlan}
+        />
+      </AuthContext.Provider>
+    );
+
+    // Wait for the restore effect to populate the set logs
+    await waitFor(() => {
+      expect(screen.getByText(/85 kg/i)).toBeInTheDocument();
+      expect(screen.getByText(/10 reps/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 \/ 8/i)).toBeInTheDocument();
     });
   });
 });

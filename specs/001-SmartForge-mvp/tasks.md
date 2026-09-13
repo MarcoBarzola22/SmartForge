@@ -428,3 +428,83 @@
 - [x] **TASK-80**: Verificación integral end-to-end del flujo completo del MVP: Registro → Perfil → Generación de Mesociclo → Check-in pre-entreno → Registro de Series → Sugerencia de Progresión → Reporte de Dolor → Ajuste de Carga.
   - **RF**: RF-01, RF-02, RF-03, RF-04, RF-05, RF-06, RF-07, RF-08, RF-09, RF-10
   - **Hecho cuando**: El flujo completo se ejecuta de inicio a fin en una sesión simulada sin errores de consola ni discrepancias en base de datos.
+
+## Fase 21: Bugfixing UI/UX y Estabilización del MVP
+
+- [x] **T-81: Fijar BottomNav y evitar superposición de contenido**
+  - **RF cubiertos:** RNF-01, Constitución R2
+  - **Archivos:** `src/components/navigation/BottomNav.tsx`[cite: 1], `src/components/layout/MobileLayout.tsx`[cite: 1]
+  - **Descripción:** Aplicar clases `fixed bottom-0 left-0 w-full z-50` al BottomNav. Añadir padding inferior (`pb-16` o equivalente) al contenedor principal en `MobileLayout.tsx` para que el final de las listas no quede tapado por la barra.
+  - **Hecho cuando:** La barra de navegación se mantiene anclada abajo al scrollear y el contenido de la página se puede leer completamente hasta el final.
+
+- [x] **T-82: Eliminar duplicación del SyncStatusBadge**
+  - **RF cubiertos:** RNF-03
+  - **Archivos:** `src/pages/profile/ProfilePage.tsx`[cite: 1], `src/pages/mesocycle/MesocyclePage.tsx`[cite: 1]
+  - **Descripción:** Remover las instancias importadas e inyectadas del componente `SyncStatusBadge` dentro de las vistas individuales de Perfil y Mesociclo, dejando únicamente la instancia centralizada que vive en el Header/Layout principal.
+  - **Hecho cuando:** El badge "En línea · Sincronizado" aparece una sola vez en la parte superior de la pantalla, independientemente de la vista activa.
+
+- [x] **T-83: Evitar colapso y desbordamiento en tarjetas de Análisis Biomecánico**
+  - **RF cubiertos:** RNF-01
+  - **Archivos:** `src/pages/catalog/ExerciseDetailPage.tsx`[cite: 1]
+  - **Descripción:** Envolver los textos de los metadatos (Patrón, Músculo, Tipo, Ratio) con las clases `break-words` o `truncate`. Asegurar que los contenedores grid/flex usen `min-w-0` y `flex-1` para forzar al texto a ajustarse al ancho de la pantalla (390px) en lugar de empujar la tarjeta hacia afuera.
+  - **Hecho cuando:** Ningún texto largo rompe la tarjeta y no existe scroll horizontal en la vista de detalle de ejercicio.
+
+- [x] **T-84: Implementar cierre de sesión en ProfilePage**
+  - **RF cubiertos:** RF-01
+  - **Archivos:** `src/pages/profile/ProfilePage.tsx`[cite: 1], `src/hooks/useAuth.ts`[cite: 1]
+  - **Descripción:** Añadir un `<Button variant="destructive">Cerrar Sesión</Button>` al final del perfil. Al hacer click, debe invocar una función de `useAuth` que elimine el JWT del almacenamiento local y ejecute una redirección dura a `/login`.
+  - **Hecho cuando:** Al presionar el botón, el usuario es expulsado a la pantalla de login y no puede volver atrás sin autenticarse.
+
+- [x] **T-85: Rediseñar Layout de ActiveExerciseWorkspace y SetLogger para evitar desfasaje**
+  - **RF cubiertos:** RF-05, RNF-01
+  - **Archivos:** `src/pages/session/ActiveExerciseWorkspace.tsx`[cite: 1], `src/pages/session/SetLogger.tsx`[cite: 1]
+  - **Descripción:** Reestructurar los inputs de registro de series. Eliminar anchos fijos. Utilizar `grid grid-cols-2 gap-2` o flexbox con `flex-wrap` asegurando `w-full` en los contenedores padres. Todos los botones de incremento/decremento deben medir `h-12 w-12` (48px).
+  - **Hecho cuando:** Los controles de peso, repeticiones y RIR encajan perfectamente en una pantalla de 320px-390px sin aplastarse ni salir de los márgenes.
+
+- [x] **T-86: Conectar finalización de sesión con la API y refrescar estado UI**
+  - **RF cubiertos:** RF-05
+  - **Archivos:** `src/pages/session/SessionPage.tsx`[cite: 1]
+  - **Descripción:** Conectar el botón "Finalizar Sesión" para que ejecute la mutación a `PATCH /api/sessions/:id/complete`[cite: 4]. En el callback `onSuccess` de React Query, ejecutar `queryClient.invalidateQueries()` para forzar el refresco de los datos y redirigir al Dashboard.
+  - **Hecho cuando:** Al finalizar la sesión, la base de datos registra el cambio de estado y la interfaz devuelve al usuario al resumen del mesociclo actualizado.
+
+  - [x] **T-87: Limpieza de Login y Perfil**
+  - **RF cubiertos:** RF-01
+  - **Archivos:** `src/pages/auth/LoginPage.tsx`, `src/pages/profile/ProfilePage.tsx`
+  - **Descripción:** En LoginPage, eliminar el formulario de correo/contraseña y dejar exclusivamente el botón de "Continuar con Google". En ProfilePage, eliminar el botón inferior "Siguiente campo".
+  - **Hecho cuando:** El login es 100% OAuth y el perfil se guarda directamente sin botones de navegación entre campos.
+
+- [x] **T-88: Refactor de Catálogo: Barra de búsqueda y Enlaces externos**
+  - **RF cubiertos:** RF-09
+  - **Archivos:** `src/pages/catalog/ExerciseCatalogPage.tsx`, `src/pages/catalog/ExerciseDetailPage.tsx`
+  - **Descripción:** Implementar un input de búsqueda por texto en la parte superior del catálogo. En el detalle del ejercicio, eliminar el reproductor de iframe/video embebido y reemplazarlo por un `<Button asChild>` que sea un enlace externo (`target="_blank"`) hacia la URL de YouTube.
+  - **Hecho cuando:** Se puede buscar por nombre y los videos se abren en la app de YouTube, ahorrando recursos locales.
+
+- [x] **T-89: Corrección de wrap y colapso de texto en metadatos**
+  - **RF cubiertos:** RNF-01
+  - **Archivos:** `src/components/ui/Card.tsx`, `src/pages/catalog/ExerciseDetailPage.tsx`
+  - **Descripción:** Corregir el corte de palabras ("Monoart-icular"). Cambiar propiedades como `break-all` por `break-words` o `hyphens-auto`, y asegurar que los grid items tengan el padding correcto.
+  - **Hecho cuando:** Las palabras largas bajan a la siguiente línea sin partirse a la mitad de una sílaba.
+
+- [x] **T-90: Reestructuración visual de la Tarjeta de Sobrecarga Progresiva**
+  - **RF cubiertos:** RF-07, RNF-01
+  - **Archivos:** `src/pages/session/ActiveExerciseWorkspace.tsx` (o donde viva la tarjeta de sugerencia)
+  - **Descripción:** Arreglar el colapso absoluto de las "3 mini cards". Usar `flex-col` en móviles pequeños o un `grid-cols-2` con `min-w-0` para que el texto (Carga, Reps, Racha) tenga espacio. Asegurar que los íconos (como el corazón de Reportar Molestia) no se corten usando `flex-shrink-0`.
+  - **Hecho cuando:** La sugerencia de carga es 100% legible en 320px sin superposición de elementos.
+
+- [x] **T-91: Persistencia de estado de Sesión Activa**
+  - **RF cubiertos:** RF-04, RNF-03
+  - **Archivos:** `src/pages/session/SessionPage.tsx`, `src/stores/offlineStore.ts`
+  - **Descripción:** Corregir el bug de pérdida de estado al cambiar de pestaña. El frontend debe leer la sesión en estado `in_progress` desde el store local o la API al montarse el componente, reanudando la sesión activa en lugar de reiniciarla.
+  - **Hecho cuando:** Navegar al perfil y volver a la sesión mantiene la sesión del día abierta con las series ya marcadas.
+
+- [x] **T-92: Corrección de actualización de estado al finalizar sesión**
+  - **RF cubiertos:** RF-05
+  - **Archivos:** `src/pages/session/SessionPage.tsx`, `src/pages/mesocycle/MesocyclePage.tsx`
+  - **Descripción:** Asegurar que el endpoint `PATCH /api/sessions/:id/complete` se ejecuta correctamente y que React Query invalida las queries del mesociclo (`queryClient.invalidateQueries({ queryKey: ['mesocycle'] })`) para que el check verde aparezca en el día completado.
+  - **Hecho cuando:** Al finalizar la sesión, el usuario vuelve a la vista de Rutina y el día figura como completado.
+
+- [x] **T-93: Refresco de estado global al editar el Perfil**
+  - **RF cubiertos:** RF-01, CA-01.5
+  - **Archivos:** `src/pages/profile/ProfilePage.tsx`
+  - **Descripción:** Asegurar que al guardar cambios en el perfil, la UI se actualice inmediatamente. Se debe agregar `queryClient.invalidateQueries({ queryKey: ['profile'] })` y `queryClient.invalidateQueries({ queryKey: ['mesocycle'] })` dentro del callback `onSuccess` de la mutación que actualiza los datos del atleta.
+  - **Hecho cuando:** Al cambiar y guardar un dato en el perfil (como el objetivo o el equipamiento), la información se actualiza al instante en la vista de Rutina sin necesidad de recargar la página manualmente.

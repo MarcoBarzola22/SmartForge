@@ -88,7 +88,7 @@ export const ActiveExerciseWorkspace: React.FC<ActiveExerciseWorkspaceProps> = (
     <div
       data-testid="active-exercise-workspace"
       className={cn(
-        'w-full max-w-[390px] mx-auto flex flex-col gap-4 overflow-x-hidden select-none',
+        'w-full max-w-[390px] mx-auto flex flex-col gap-4 overflow-x-hidden select-none min-w-0',
         className
       )}
       {...props}
@@ -98,29 +98,29 @@ export const ActiveExerciseWorkspace: React.FC<ActiveExerciseWorkspaceProps> = (
         <Card
           title="Series Completadas"
           subtitle={`${completedSets.length} de ${targetSets} series completadas`}
-          className="bg-surface-2/60 border-border-subtle"
+          className="bg-surface-2/60 border-border-subtle w-full min-w-0"
         >
-          <div className="flex flex-col gap-2 pt-1">
+          <div className="flex flex-col gap-2 pt-1 w-full min-w-0">
             {completedSets.map((set) => (
               <div
                 key={set.id || set.set_number}
-                className="p-3 rounded-xl bg-surface-1 border border-border-interactive/40 flex items-center justify-between text-xs"
+                className="p-3 rounded-xl bg-surface-1 border border-border-interactive/40 flex items-center justify-between text-xs w-full min-w-0"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-brand-primary/10 border border-brand-primary/30 text-brand-primary flex items-center justify-center font-bold text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-6 h-6 rounded-lg bg-brand-primary/10 border border-brand-primary/30 text-brand-primary flex items-center justify-center font-bold text-xs shrink-0">
                     {set.set_number}
                   </span>
-                  <div className="flex flex-col">
-                    <span className="font-bold text-content-primary font-mono">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-content-primary font-mono truncate">
                       {set.weight_kg} kg × {set.reps_completed} reps
                     </span>
-                    <span className="text-[10px] text-content-secondary">
+                    <span className="text-[10px] text-content-secondary truncate">
                       RIR {set.rir}
                     </span>
                   </div>
                 </div>
 
-                <CheckCircle2 className="w-4 h-4 text-status-success shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-status-success shrink-0 ml-2" />
               </div>
             ))}
           </div>
@@ -132,7 +132,7 @@ export const ActiveExerciseWorkspace: React.FC<ActiveExerciseWorkspaceProps> = (
         <div
           ref={activeSetRef}
           data-testid="active-set-container"
-          className="sticky bottom-0 z-10 w-full pt-1 pb-2 bg-gradient-to-t from-surface-base via-surface-base/95 to-transparent"
+          className="sticky bottom-0 z-10 w-full pt-1 pb-2 bg-gradient-to-t from-surface-base via-surface-base/95 to-transparent min-w-0"
         >
           <ModularSetCard
             setNumber={nextSetNumber}
@@ -146,14 +146,15 @@ export const ActiveExerciseWorkspace: React.FC<ActiveExerciseWorkspaceProps> = (
             onRirChange={setRir}
             onCompleteSet={handleCompleteActiveSet}
             isLoading={isLoading}
+            className="w-full min-w-0"
           />
         </div>
       ) : (
-        <Card className="p-6 text-center flex flex-col items-center gap-3 bg-surface-1 border-border-interactive">
-          <div className="w-12 h-12 rounded-full bg-status-success/10 border border-status-success/30 flex items-center justify-center text-status-success">
+        <Card className="p-6 text-center flex flex-col items-center gap-3 bg-surface-1 border-border-interactive w-full min-w-0">
+          <div className="w-12 h-12 rounded-full bg-status-success/10 border border-status-success/30 flex items-center justify-center text-status-success shrink-0">
             <Trophy className="w-6 h-6" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 w-full min-w-0">
             <h4 className="text-base font-bold text-content-primary">
               ¡Todas las series completadas!
             </h4>

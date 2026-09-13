@@ -201,3 +201,4 @@
   - **Archivos:** `src/audit/i18nSpanish.test.tsx`
   - **Descripción:** Test de verificación estática de strings en componentes UI que comprueba que ningún botón, placeholder, toast o mensaje orientador contenga cadenas no traducidas o en inglés.
   - **Hecho cuando:** `npm run test src/audit/i18nSpanish.test.tsx` pasa sin discrepancias, cumpliendo la Regla 6 de la Constitución.
+

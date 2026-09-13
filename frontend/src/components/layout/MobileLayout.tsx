@@ -48,7 +48,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
           role="main"
           style={isKeyboardOpen ? { maxHeight: `${availableHeight}px` } : undefined}
           className={cn(
-            'flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-4 w-full',
+            'flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-4 pb-16 w-full',
             className
           )}
         >
@@ -71,7 +71,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
           )
         ) : (
           footer && (
-            <footer className="sticky bottom-0 w-full bg-surface-1/95 backdrop-blur-md border-t border-border-subtle z-30 pb-[env(safe-area-inset-bottom)] shrink-0">
+            <footer className="fixed bottom-0 left-0 right-0 w-full max-w-[390px] mx-auto z-50">
               {footer}
             </footer>
           )

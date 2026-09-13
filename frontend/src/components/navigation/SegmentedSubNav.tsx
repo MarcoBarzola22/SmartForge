@@ -7,7 +7,7 @@ export interface SegmentedSubNavItem {
   disabled?: boolean;
 }
 
-export interface SegmentedSubNavProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface SegmentedSubNavProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
   items: SegmentedSubNavItem[];
   activeId: string;
   onChange: (id: string) => void;
@@ -36,8 +36,9 @@ export const SegmentedSubNav: React.FC<SegmentedSubNavProps> = ({
       nextIndex = (currentIndex - 1 + items.length) % items.length;
     }
 
-    if (nextIndex !== currentIndex && !items[nextIndex].disabled) {
-      onChange(items[nextIndex].id);
+    const nextItem = items[nextIndex];
+    if (nextIndex !== currentIndex && nextItem && !nextItem.disabled) {
+      onChange(nextItem.id);
     }
   };
 

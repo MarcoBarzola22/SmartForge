@@ -55,7 +55,7 @@ describe('T-13: useVisualViewport.ts (RF-03, RF-16, CF-04)', () => {
 
     act(() => {
       // Simular aparición de teclado virtual (ej: 450px de altura disponible)
-      window.visualViewport!.height = 450;
+      (window.visualViewport as any).height = 450;
       listeners['resize']?.forEach((cb) => cb());
     });
 
@@ -69,14 +69,14 @@ describe('T-13: useVisualViewport.ts (RF-03, RF-16, CF-04)', () => {
 
     // Abrir teclado
     act(() => {
-      window.visualViewport!.height = 420;
+      (window.visualViewport as any).height = 420;
       listeners['resize']?.forEach((cb) => cb());
     });
     expect(result.current.isKeyboardOpen).toBe(true);
 
     // Cerrar teclado
     act(() => {
-      window.visualViewport!.height = 800;
+      (window.visualViewport as any).height = 800;
       listeners['resize']?.forEach((cb) => cb());
     });
 

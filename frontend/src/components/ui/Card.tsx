@@ -31,7 +31,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         onClick={onClick}
         className={cn(
-          "w-full overflow-hidden rounded-xl bg-surface-1 border border-border-subtle p-4 shadow-sm text-content-primary transition-all duration-150",
+          "w-full overflow-hidden rounded-xl bg-surface-1 border border-border-subtle p-4 shadow-sm text-content-primary transition-all duration-150 break-words min-w-0",
           isClickable &&
             "cursor-pointer hover:border-border-interactive hover:bg-surface-2 active:scale-[0.99] min-h-[48px] touch-target select-none",
           className
@@ -39,25 +39,25 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         {...props}
       >
         {(title || headerAction) && (
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border-subtle/40">
-            <div>
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border-subtle/40 min-w-0 gap-2">
+            <div className="min-w-0 flex-1">
               {typeof title === 'string' ? (
-                <h3 className="text-base font-bold text-content-primary">{title}</h3>
+                <h3 className="text-base font-bold text-content-primary break-words min-w-0">{title}</h3>
               ) : (
                 title
               )}
               {subtitle && (
-                <p className="text-xs text-content-secondary font-medium">{subtitle}</p>
+                <p className="text-xs text-content-secondary font-medium break-words min-w-0">{subtitle}</p>
               )}
             </div>
-            {headerAction && <div>{headerAction}</div>}
+            {headerAction && <div className="shrink-0">{headerAction}</div>}
           </div>
         )}
 
-        <div className="text-sm text-content-primary">{children}</div>
+        <div className="text-sm text-content-primary break-words min-w-0">{children}</div>
 
         {footer && (
-          <div className="pt-3 mt-3 border-t border-border-subtle/40 text-xs text-content-secondary">
+          <div className="pt-3 mt-3 border-t border-border-subtle/40 text-xs text-content-secondary break-words min-w-0">
             {footer}
           </div>
         )}
@@ -73,7 +73,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('flex flex-col gap-1.5 pb-2 mb-2 border-b border-border-subtle/40', className)}
+    className={cn('flex flex-col gap-1.5 pb-2 mb-2 border-b border-border-subtle/40 min-w-0', className)}
     {...props}
   />
 ));
@@ -85,7 +85,7 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <h3
     ref={ref}
-    className={cn('text-base font-bold leading-tight text-content-primary', className)}
+    className={cn('text-base font-bold leading-tight text-content-primary break-words min-w-0', className)}
     {...props}
   />
 ));
@@ -97,7 +97,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-xs font-medium text-content-secondary', className)}
+    className={cn('text-xs font-medium text-content-secondary break-words min-w-0', className)}
     {...props}
   />
 ));
@@ -107,7 +107,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('text-sm text-content-primary', className)} {...props} />
+  <div ref={ref} className={cn('text-sm text-content-primary break-words min-w-0', className)} {...props} />
 ));
 CardContent.displayName = 'CardContent';
 

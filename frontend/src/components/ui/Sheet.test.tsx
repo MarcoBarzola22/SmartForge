@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
-  SheetFooter
+  SheetDescription
 } from './Sheet';
 
 describe('T-08: Implementación de Sheet.tsx (Bottom Sheet con bloqueo de scroll y soporte de teclado)', () => {

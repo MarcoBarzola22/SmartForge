@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { MobileLayout } from '../../components/layout/MobileLayout';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Toast } from '../../components/ui/Toast';
 import { apiClient } from '../../api/client';
+import { queryClient } from '../../api/query-client';
 import type {
   MesocycleDetail,
   SessionPlan,
@@ -18,7 +19,8 @@ import {
   TrendingUp,
   ShieldCheck,
   PlusCircle,
-  Dumbbell
+  Dumbbell,
+  CheckCircle2
 } from 'lucide-react';
 
 export interface MesocyclePageProps {
@@ -77,12 +79,32 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
     }
   }, [initialMesocycle]);
 
+  // Listen to React Query invalidations on ['mesocycle'] (T-92)
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      const isMesocycleQuery =
+        event?.query?.queryKey &&
+        Array.isArray(event.query.queryKey) &&
+        event.query.queryKey[0] === 'mesocycle';
+
+      if (isMesocycleQuery && event.type === 'updated' && (event.action as any)?.type === 'invalidate') {
+        fetchMesocycle();
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   const handleGenerateMesocycle = async () => {
     setIsGenerating(true);
     setError(null);
     try {
       const created = await apiClient.mesocycles.create({});
       setMesocycle(created);
+      queryClient.setQueryData(['mesocycle'], created);
+      await queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
       if (created.weeks && created.weeks.length > 0 && created.weeks[0]) {
         setSelectedWeekNumber(created.weeks[0].week_number);
       }
@@ -96,6 +118,14 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
       setIsGenerating(false);
     }
   };
+
+  const completedPlanIds = useMemo<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('smartforge_completed_plans') || '[]');
+    } catch {
+      return [];
+    }
+  }, [mesocycle]);
 
   const selectedWeek = useMemo(() => {
     if (!mesocycle?.weeks) return null;
@@ -132,53 +162,44 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
   // Loading skeleton state
   if (isLoading) {
     return (
-      <MobileLayout title="Mesociclo" subtitle="Cargando plan..." isOnline={true}>
-        <div data-testid="mesocycle-loading-state" className="flex flex-col gap-4 py-4 animate-pulse">
-          <div className="h-28 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
-          <div className="h-12 bg-zinc-900 rounded-xl border border-zinc-800/80" />
-          <div className="h-44 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
-          <div className="h-44 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
-        </div>
-      </MobileLayout>
+      <div data-testid="mesocycle-loading-state" className="flex flex-col gap-4 py-4 animate-pulse">
+        <div className="h-28 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
+        <div className="h-12 bg-zinc-900 rounded-xl border border-zinc-800/80" />
+        <div className="h-44 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
+        <div className="h-44 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
+      </div>
     );
   }
 
   // Empty state
   if (!mesocycle) {
     return (
-      <MobileLayout title="Mesociclo" subtitle="Plan de Entrenamiento" isOnline={true}>
-        <div className="flex flex-col items-center justify-center text-center py-12 px-4">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
-            <Dumbbell className="w-8 h-8" />
-          </div>
-          <h2 className="text-lg font-bold text-zinc-100 mb-1">
-            No tenés un mesociclo activo
-          </h2>
-          <p className="text-xs text-zinc-400 max-w-xs mb-6 leading-relaxed">
-            Generá tu primer plan estructurado con periodización científica adaptada a tu nivel y equipamiento disponible.
-          </p>
-          <Button
-            variant="primary"
-            size="lg"
-            isLoading={isGenerating}
-            onClick={handleGenerateMesocycle}
-            className="shadow-xl"
-            iconLeft={<PlusCircle className="w-5 h-5" />}
-          >
-            Generar Nuevo Mesociclo
-          </Button>
+      <div className="flex flex-col items-center justify-center text-center py-12 px-4">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
+          <Dumbbell className="w-8 h-8" />
         </div>
-      </MobileLayout>
+        <h2 className="text-lg font-bold text-zinc-100 mb-1">
+          No tenés un mesociclo activo
+        </h2>
+        <p className="text-xs text-zinc-400 max-w-xs mb-6 leading-relaxed">
+          Generá tu primer plan estructurado con periodización científica adaptada a tu nivel y equipamiento disponible.
+        </p>
+        <Button
+          variant="primary"
+          size="lg"
+          isLoading={isGenerating}
+          onClick={handleGenerateMesocycle}
+          className="shadow-xl"
+          iconLeft={<PlusCircle className="w-5 h-5" />}
+        >
+          Generar Nuevo Mesociclo
+        </Button>
+      </div>
     );
   }
 
   return (
-    <MobileLayout
-      title="Mesociclo"
-      subtitle="Dashboard de Entrenamiento"
-      isOnline={true}
-    >
-      <div className="flex flex-col gap-4 pb-8">
+    <div className="flex flex-col gap-4 pb-8">
         {error && (
           <Toast
             type="error"
@@ -323,95 +344,134 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
 
           {selectedWeek?.sessions && selectedWeek.sessions.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {selectedWeek.sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800/90 flex flex-col gap-3 transition-all hover:border-zinc-700 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                        Día {session.day_number}
-                      </span>
-                      <h3 className="text-sm font-bold text-zinc-100 mt-0.5">
-                        {session.name}
-                      </h3>
-                    </div>
+              {selectedWeek.sessions.map((session) => {
+                const isSessionCompleted = Boolean(
+                  (session as any).is_completed ||
+                  (session as any).status === 'completed' ||
+                  completedPlanIds.includes(session.id)
+                );
 
-                    <button
-                      type="button"
-                      aria-label={`Ver detalles de sesión ${session.name}`}
-                      onClick={() => {
-                        onSelectSession?.(session);
-                        onNavigateToRoutineEditor?.(session.id);
-                      }}
-                      className="touch-target min-h-[48px] min-w-[48px] inline-flex items-center justify-center p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  {/* Exercises list in session */}
-                  {session.exercise_assignments &&
-                  session.exercise_assignments.length > 0 ? (
-                    <div className="flex flex-col gap-2 pt-1 border-t border-zinc-800/70">
-                      {session.exercise_assignments.map((assign, idx) => (
-                        <div
-                          key={assign.id || idx}
-                          className="flex items-center justify-between text-xs py-1 px-1 rounded-lg hover:bg-zinc-800/40 transition-colors"
-                        >
-                          <div className="flex items-center gap-2 overflow-hidden pr-2">
-                            <span className="text-[11px] font-semibold text-zinc-500 shrink-0 w-4 text-center">
-                              {idx + 1}.
-                            </span>
-                            <span className="font-medium text-zinc-200 truncate">
-                              {assign.exercise?.name || 'Ejercicio'}
-                            </span>
-                            {assign.is_swapped && (
-                              <Badge variant="warning" size="sm">
-                                Reemplazado
-                              </Badge>
-                            )}
-                          </div>
-
-                          <div className="text-right shrink-0 text-zinc-400 text-[11px] font-mono">
-                            <span className="font-semibold text-amber-300">
-                              {assign.target_sets} × {assign.target_reps}
-                            </span>
-                            {assign.target_load_kg > 0 && (
-                              <span className="ml-1 text-zinc-300">
-                                @ {assign.target_load_kg}kg
-                              </span>
-                            )}
-                            <span className="ml-1 text-zinc-500">
-                              (RIR {assign.target_rir})
-                            </span>
-                          </div>
+                return (
+                  <div
+                    key={session.id}
+                    className={`p-4 rounded-2xl bg-zinc-900 border transition-all hover:border-zinc-700 shadow-sm flex flex-col gap-3 ${
+                      isSessionCompleted ? 'border-emerald-500/30 bg-zinc-900/95' : 'border-zinc-800/90'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                            Día {session.day_number}
+                          </span>
+                          {isSessionCompleted && (
+                            <Badge
+                              variant="success"
+                              size="sm"
+                              className="bg-emerald-950/80 text-emerald-400 border-emerald-500/40 flex items-center gap-1 font-medium text-[10px] px-2 py-0.5"
+                            >
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                              <span>Completado</span>
+                            </Badge>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-zinc-500 italic py-1">
-                      Sin ejercicios asignados.
-                    </p>
-                  )}
+                        <h3 className="text-sm font-bold text-zinc-100 mt-0.5">
+                          {session.name}
+                        </h3>
+                      </div>
 
-                  {/* Start session action */}
-                  {onStartSession && (
-                    <div className="pt-2">
-                      <Button
-                        variant="outline"
-                        size="md"
-                        fullWidth
-                        onClick={() => onStartSession(session.id)}
-                        iconLeft={<ShieldCheck className="w-4 h-4" />}
+                      <button
+                        type="button"
+                        aria-label={`Ver detalles de sesión ${session.name}`}
+                        onClick={() => {
+                          onSelectSession?.(session);
+                          onNavigateToRoutineEditor?.(session.id);
+                        }}
+                        className="touch-target min-h-[48px] min-w-[48px] inline-flex items-center justify-center p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
                       >
-                        Iniciar Sesión
-                      </Button>
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* Exercises list in session */}
+                    {session.exercise_assignments &&
+                    session.exercise_assignments.length > 0 ? (
+                      <div className="flex flex-col gap-2 pt-1 border-t border-zinc-800/70">
+                        {session.exercise_assignments.map((assign, idx) => (
+                          <div
+                            key={assign.id || idx}
+                            className="flex items-center justify-between text-xs py-1 px-1 rounded-lg hover:bg-zinc-800/40 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden pr-2">
+                              <span className="text-[11px] font-semibold text-zinc-500 shrink-0 w-4 text-center">
+                                {idx + 1}.
+                              </span>
+                              <span className="font-medium text-zinc-200 truncate">
+                                {assign.exercise?.name || 'Ejercicio'}
+                              </span>
+                              {assign.is_swapped && (
+                                <Badge variant="warning" size="sm">
+                                  Reemplazado
+                                </Badge>
+                              )}
+                            </div>
+
+                            <div className="text-right shrink-0 text-zinc-400 text-[11px] font-mono">
+                              <span className="font-semibold text-amber-300">
+                                {assign.target_sets} × {assign.target_reps}
+                              </span>
+                              {assign.target_load_kg > 0 && (
+                                <span className="ml-1 text-zinc-300">
+                                  @ {assign.target_load_kg}kg
+                                </span>
+                              )}
+                              <span className="ml-1 text-zinc-500">
+                                (RIR {assign.target_rir})
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500 italic py-1">
+                        Sin ejercicios asignados.
+                      </p>
+                    )}
+
+                    {/* Start session action */}
+                    {onStartSession && (
+                      <div className="pt-2">
+                        {isSessionCompleted ? (
+                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                            <span className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                              Día Completado
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onStartSession(session.id)}
+                              className="text-xs text-zinc-400 hover:text-white h-9 min-h-[36px] px-2.5"
+                            >
+                              Repetir
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="md"
+                            fullWidth
+                            onClick={() => onStartSession(session.id)}
+                            iconLeft={<ShieldCheck className="w-4 h-4" />}
+                          >
+                            Iniciar Sesión
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-zinc-500 italic py-4 text-center">
@@ -420,7 +480,6 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
           )}
         </div>
       </div>
-    </MobileLayout>
   );
 };
 

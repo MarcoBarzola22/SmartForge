@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from 'cn';
-import { Timer, ArrowRight, Plus, Minus, BellOff } from 'lucide-react';
+import { Timer, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
 export interface RestTimerBarProps extends React.HTMLAttributes<HTMLDivElement> {

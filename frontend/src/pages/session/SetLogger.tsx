@@ -138,32 +138,32 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
   ];
 
   return (
-    <div className={`flex flex-col gap-4 ${className}`}>
+    <div className={`flex flex-col gap-4 w-full min-w-0 ${className}`}>
       {/* Target Prescription Header (CA-05.1) */}
-      <Card>
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+      <Card className="w-full min-w-0">
+        <div className="flex flex-col gap-2 w-full min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 truncate">
               Prescripción del Ejercicio
             </span>
-            <Badge variant="amber" size="sm">
+            <Badge variant="amber" size="sm" className="shrink-0">
               Serie {editingSet ? editingSet.set_number : nextSetNumber} de {targetSets}
             </Badge>
           </div>
 
-          <h3 className="text-base font-bold text-zinc-100 leading-snug">
+          <h3 className="text-base font-bold text-zinc-100 leading-snug break-words">
             {exerciseName}
           </h3>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-zinc-300">
-            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800">
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-zinc-300 w-full">
+            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 shrink-0">
               <Target className="w-3.5 h-3.5 text-amber-400" />
               <span>
                 Objetivo: {targetSets} × {targetReps} reps @ {targetLoadKg} kg
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800">
+            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 shrink-0">
               <Flame className="w-3.5 h-3.5 text-amber-400" />
               <span>RIR Objetivo: {targetRir}</span>
             </div>
@@ -172,10 +172,13 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
       </Card>
 
       {/* Touch-Optimized Set Input Area (RNF-01, CA-05.2, CA-05.5) */}
-      <Card title={editingSet ? `Editar Serie ${editingSet.set_number}` : `Registrar Serie ${nextSetNumber}`}>
-        <div className="flex flex-col gap-4 pt-1">
+      <Card 
+        title={editingSet ? `Editar Serie ${editingSet.set_number}` : `Registrar Serie ${nextSetNumber}`}
+        className="w-full min-w-0"
+      >
+        <div className="flex flex-col gap-4 pt-1 w-full min-w-0">
           {/* 1. Control de Peso (kg) */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 w-full min-w-0">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="set-weight"
@@ -189,12 +192,12 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               <button
                 type="button"
                 aria-label="Disminuir peso 1 kg"
                 onClick={() => adjustWeight(-1)}
-                className="touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
+                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -206,28 +209,28 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
                 min="0"
                 value={weightKg}
                 onChange={(e) => setWeightKg(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="flex-1 h-12 bg-zinc-950 border border-zinc-800 rounded-xl text-center text-lg font-bold text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                className="flex-1 min-w-0 h-12 bg-zinc-950 border border-zinc-800 rounded-xl text-center text-lg font-bold text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
               />
 
               <button
                 type="button"
                 aria-label="Aumentar peso 1 kg"
                 onClick={() => adjustWeight(1)}
-                className="touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
+                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
 
             {/* Botones de ajuste rápido de peso */}
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
               {[-5, -2.5, 2.5, 5].map((delta) => (
                 <button
                   key={delta}
                   type="button"
                   aria-label={`${delta > 0 ? '+' : ''}${delta} kg`}
                   onClick={() => adjustWeight(delta)}
-                  className="touch-target min-h-[48px] py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all"
+                  className="touch-target min-h-[48px] h-12 w-full py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all flex items-center justify-center"
                 >
                   {delta > 0 ? `+${delta}` : delta}
                 </button>
@@ -236,7 +239,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
           </div>
 
           {/* 2. Control de Repeticiones */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 w-full min-w-0">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="set-reps"
@@ -250,12 +253,12 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               <button
                 type="button"
                 aria-label="Disminuir 1 repetición"
                 onClick={() => adjustReps(-1)}
-                className="touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
+                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -266,28 +269,28 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
                 min="1"
                 value={reps}
                 onChange={(e) => setReps(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="flex-1 h-12 bg-zinc-950 border border-zinc-800 rounded-xl text-center text-lg font-bold text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+                className="flex-1 min-w-0 h-12 bg-zinc-950 border border-zinc-800 rounded-xl text-center text-lg font-bold text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
               />
 
               <button
                 type="button"
                 aria-label="Aumentar 1 repetición"
                 onClick={() => adjustReps(1)}
-                className="touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
+                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
               >
                 <Plus className="w-4 h-4" />
               </button>
             </div>
 
             {/* Botones de ajuste rápido de reps */}
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
               {[-2, -1, 1, 2].map((delta) => (
                 <button
                   key={delta}
                   type="button"
                   aria-label={`${delta > 0 ? '+' : ''}${delta} rep`}
                   onClick={() => adjustReps(delta)}
-                  className="touch-target min-h-[48px] py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all"
+                  className="touch-target min-h-[48px] h-12 w-full py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all flex items-center justify-center"
                 >
                   {delta > 0 ? `+${delta}` : delta}
                 </button>
@@ -296,7 +299,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
           </div>
 
           {/* 3. Selector de RIR (0 a 5) */}
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 w-full min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
                 <Flame className="w-3.5 h-3.5 text-amber-400" />
@@ -307,7 +310,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-6 gap-1">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full">
               {RIR_OPTIONS.map((opt) => {
                 const isSelected = rir === opt.value;
                 return (
@@ -317,14 +320,14 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
                     aria-label={`RIR ${opt.value}`}
                     aria-pressed={isSelected}
                     onClick={() => setRir(opt.value)}
-                    className={`touch-target min-h-[48px] p-1 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center ${
+                    className={`touch-target min-h-[48px] h-12 w-full p-1 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center ${
                       isSelected
                         ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/20'
                         : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
                     }`}
                   >
-                    <span className="text-sm">{opt.value}</span>
-                    <span className="text-[8px] font-normal leading-tight">
+                    <span className="text-sm font-bold leading-tight">{opt.value}</span>
+                    <span className="text-[9px] font-normal leading-tight truncate">
                       {opt.value === 0 ? 'Fallo' : `RIR ${opt.value}`}
                     </span>
                   </button>
@@ -336,7 +339,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
       </Card>
 
       {/* Botón Grande de Confirmación (1 toque si acepta pre-carga, CA-05.2) */}
-      <div className="sticky bottom-4 z-20 flex flex-col gap-2">
+      <div className="sticky bottom-4 z-20 flex flex-col gap-2 w-full min-w-0">
         <Button
           type="button"
           variant="primary"
@@ -345,7 +348,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
           isLoading={isSubmitting || isLoading}
           onClick={handleConfirmSet}
           iconLeft={<CheckCircle2 className="w-5 h-5" />}
-          className="shadow-2xl min-h-[52px]"
+          className="shadow-2xl min-h-[52px] h-14 w-full"
         >
           {editingSet
             ? `Guardar Serie ${editingSet.set_number}`
@@ -359,6 +362,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
             size="md"
             fullWidth
             onClick={handleCancelEdit}
+            className="min-h-[48px] h-12 w-full"
           >
             Cancelar edición
           </Button>
@@ -367,37 +371,37 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
 
       {/* Lista de Series Completadas (CA-05.4) */}
       {completedSets.length > 0 && (
-        <Card title="Series Completadas" subtitle={`${completedSets.length} de ${targetSets} series`}>
-          <div className="flex flex-col gap-2 pt-1">
+        <Card title="Series Completadas" subtitle={`${completedSets.length} de ${targetSets} series`} className="w-full min-w-0">
+          <div className="flex flex-col gap-2 pt-1 w-full min-w-0">
             {completedSets.map((set) => (
               <div
                 key={set.id || set.set_number}
-                className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs"
+                className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs w-full min-w-0"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center font-bold text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
                     {set.set_number}
                   </span>
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase font-bold text-zinc-400">
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 truncate">
                       Serie {set.set_number}
                     </span>
-                    <span className="font-bold text-zinc-100 font-mono">
+                    <span className="font-bold text-zinc-100 font-mono truncate">
                       {set.weight_kg} kg × {set.reps_completed} reps
                     </span>
-                    <span className="text-[10px] text-zinc-400">
+                    <span className="text-[10px] text-zinc-400 truncate">
                       RIR {set.rir}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0 ml-2">
                   {onUpdateSet && (
                     <button
                       type="button"
                       aria-label={`Editar serie ${set.set_number}`}
                       onClick={() => handleStartEdit(set)}
-                      className="touch-target min-h-[48px] min-w-[48px] p-2 text-zinc-400 hover:text-amber-400 transition-colors flex items-center justify-center"
+                      className="touch-target h-12 w-12 min-h-[48px] min-w-[48px] p-2 text-zinc-400 hover:text-amber-400 transition-colors flex items-center justify-center shrink-0"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -408,7 +412,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
                       type="button"
                       aria-label={`Eliminar serie ${set.set_number}`}
                       onClick={() => onDeleteSet(set.id)}
-                      className="touch-target min-h-[48px] min-w-[48px] p-2 text-zinc-400 hover:text-red-400 transition-colors flex items-center justify-center"
+                      className="touch-target h-12 w-12 min-h-[48px] min-w-[48px] p-2 text-zinc-400 hover:text-red-400 transition-colors flex items-center justify-center shrink-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

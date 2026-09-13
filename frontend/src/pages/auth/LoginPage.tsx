@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Dumbbell, ShieldCheck, Flame, RefreshCw, AlertCircle, Mail, Lock } from 'lucide-react';
+import { Dumbbell, ShieldCheck, Flame, RefreshCw, AlertCircle } from 'lucide-react';
 
 export interface LoginPageProps {
   onNavigateToApp?: () => void;
@@ -44,14 +43,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     isProfileComplete,
     isLoading,
     error,
-    loginWithGoogle,
-    loginWithToken
+    loginWithGoogle
   } = useAuth();
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [recoveryNotice, setRecoveryNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -62,32 +55,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
       }
     }
   }, [isAuthenticated, isProfileComplete, onNavigateToApp, onNavigateToOnboarding]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-    setRecoveryNotice(null);
-
-    if (!email.trim() || !password.trim()) {
-      setFormError('Por favor completá tu correo y contraseña');
-      return;
-    }
-
-    // Si se implementa autenticación por credenciales o mock token:
-    if (loginWithToken) {
-      try {
-        await loginWithToken('mock-auth-token', true);
-      } catch (err: any) {
-        setFormError(err?.message || 'Error al iniciar sesión');
-      }
-    }
-  };
-
-  const handleForgotPassword = () => {
-    setRecoveryNotice(
-      'Hemos enviado las instrucciones de recuperación a tu correo electrónico registrado.'
-    );
-  };
 
   return (
     <div className="min-h-screen bg-black flex justify-center w-full select-none">
@@ -115,7 +82,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </p>
         </div>
 
-        {/* Feature Highlights (Ocultable en viewports muy compactos si es necesario, sin desbordar) */}
+        {/* Feature Highlights */}
         <div className="space-y-2 py-4">
           <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
             <div className="p-1.5 rounded-lg bg-brand-primary/15 text-brand-primary border border-brand-primary/20 shrink-0">
@@ -148,58 +115,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </div>
         </div>
 
-        {/* Formulario de Login en 1 Columna Vertical (RF-08, RF-11, RF-14, T-25) */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3 w-full pb-4">
-          {(error || formError) && (
+        {/* Autenticación 100% OAuth con Google (T-87) */}
+        <div className="flex flex-col gap-3 w-full pb-4">
+          {error && (
             <div className="p-3 rounded-xl bg-status-error-bg/15 border border-status-error-bg text-semantic-error-text text-xs flex items-center gap-2 text-left">
               <AlertCircle className="w-4 h-4 shrink-0 text-status-error-bg" />
-              <span>{error || formError}</span>
+              <span>{error}</span>
             </div>
           )}
 
-          {recoveryNotice && (
-            <div className="p-3 rounded-xl bg-brand-primary/10 border border-brand-primary/30 text-brand-primary text-xs text-left">
-              {recoveryNotice}
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2.5 w-full">
-            <Input
-              label="Correo electrónico"
-              id="email"
-              type="email"
-              placeholder="atleta@smartforge.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              iconLeft={<Mail className="w-4 h-4" />}
-              className="min-h-[48px] touch-target"
-            />
-
-            <Input
-              label="Contraseña"
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              iconLeft={<Lock className="w-4 h-4" />}
-              className="min-h-[48px] touch-target"
-            />
-          </div>
-
-          {/* Botones de acción apilados al 100% (RF-14): Primario arriba, Secundario abajo */}
           <div className="flex flex-col gap-2 pt-1 w-full">
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              fullWidth
-              isLoading={isLoading}
-              className="min-h-[48px] touch-target font-bold bg-brand-primary text-brand-contrast shadow-lg"
-            >
-              Iniciar Sesión
-            </Button>
-
             <Button
               type="button"
               variant="secondary"
@@ -214,19 +139,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({
             </Button>
           </div>
 
-          {/* Recuperación de contraseña en zona inferior accesible (RF-04, RF-08) */}
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            className="touch-target min-h-[48px] px-3 py-2 text-xs font-medium text-content-secondary hover:text-brand-primary transition-colors text-center w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-focus rounded-xl"
-          >
-            ¿Olvidaste tu contraseña?
-          </button>
-
           <p className="text-[11px] text-content-disabled text-center leading-tight">
             Al continuar, aceptás el registro y creación de tu perfil de entrenamiento (edad mínima 16 años).
           </p>
-        </form>
+        </div>
       </div>
     </div>
   );

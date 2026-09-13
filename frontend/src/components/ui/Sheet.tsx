@@ -22,7 +22,7 @@ function Sheet({
   React.useEffect(() => {
     if (!open) return;
 
-    const handlePopState = (e: PopStateEvent) => {
+    const handlePopState = () => {
       // Intercept back gesture / hardware button to close the sheet
       onOpenChange?.(false);
     };

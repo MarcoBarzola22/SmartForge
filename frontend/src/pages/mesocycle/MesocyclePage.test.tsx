@@ -330,4 +330,18 @@ describe('TASK-65: MesocyclePage Dashboard & Deload Notice (RF-02, RF-10, CA-10.
       })
     );
   });
+
+  it('should display completed green check badge on session plan when completed in routine dashboard (T-92, RF-05)', async () => {
+    localStorage.setItem('smartforge_completed_plans', JSON.stringify(['sess-plan-1']));
+    vi.spyOn(apiClient.mesocycles, 'getCurrent').mockResolvedValue(mockMesocycle);
+    renderComponent({ onStartSession: vi.fn() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Torso Empuje y Tirón')).toBeInTheDocument();
+      expect(screen.getByText('Completado')).toBeInTheDocument();
+      expect(screen.getByText('Día Completado')).toBeInTheDocument();
+    });
+
+    localStorage.removeItem('smartforge_completed_plans');
+  });
 });

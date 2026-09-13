@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ProfilePage } from './ProfilePage';
 import { apiClient } from '../../api/client';
+import { queryClient } from '../../api/query-client';
 import { AuthContext, AuthContextType } from '../../context/AuthContext';
 import type { AthleteProfile } from '../../api';
 
@@ -212,39 +213,14 @@ describe('TASK-63: ProfilePage Onboarding Form (RF-01, CA-01.2, CA-01.4, CA-01.5
       expect(horizontalScrollers.length).toBe(0);
     });
 
-    it('incluye el botón de navegación secuencial "Siguiente campo" en la mitad inferior con área táctil >= 48px (RF-05)', () => {
+    it('no incluye el botón "Siguiente campo" y renderiza el botón de envío con área táctil >= 48px (T-87, RF-01)', () => {
       renderWithAuth();
 
-      const nextBtn = screen.getByRole('button', { name: /siguiente campo/i });
-      expect(nextBtn).toBeInTheDocument();
-      expect(nextBtn.className).toMatch(TOUCH_TARGET_REGEX);
+      expect(screen.queryByRole('button', { name: /siguiente campo/i })).not.toBeInTheDocument();
 
       const submitBtn = screen.getByRole('button', { name: /Crear Perfil y Generar Mesociclo/i });
       expect(submitBtn).toBeInTheDocument();
       expect(submitBtn.className).toMatch(TOUCH_TARGET_REGEX);
-    });
-
-    it('avanza secuencialmente el foco de los campos al pulsar "Siguiente campo" (RF-05 Thumb-Zone Initializer)', async () => {
-      renderWithAuth();
-
-      const nameInput = screen.getByLabelText(/Nombre completo/i);
-      const ageInput = screen.getByLabelText(/Edad/i);
-      const weightInput = screen.getByLabelText(/Peso corporal \(kg\)/i);
-
-      // Empezamos enfocando el primer campo
-      nameInput.focus();
-      expect(document.activeElement).toBe(nameInput);
-
-      // Pulsamos "Siguiente campo" -> debe avanzar a Edad
-      fireEvent.click(screen.getByRole('button', { name: /siguiente campo/i }));
-      expect(document.activeElement).toBe(ageInput);
-
-      // Esperar más de 50ms para superar el debounce del botón (RF-21)
-      await new Promise((resolve) => setTimeout(resolve, 60));
-
-      // Pulsamos "Siguiente campo" -> debe avanzar a Peso corporal
-      fireEvent.click(screen.getByRole('button', { name: /siguiente campo/i }));
-      expect(document.activeElement).toBe(weightInput);
     });
 
     it('apila verticalmente las acciones en la mitad inferior para evitar colapsos en 320px (RF-14)', () => {
@@ -253,6 +229,41 @@ describe('TASK-63: ProfilePage Onboarding Form (RF-01, CA-01.2, CA-01.4, CA-01.5
       const bottomDock = container.querySelector('[data-testid="profile-bottom-actions"]');
       expect(bottomDock).toBeInTheDocument();
       expect(bottomDock?.className).toContain('flex-col');
+    });
+
+    it('renderiza el botón "Cerrar Sesión" con variante destructiva, >= 48px y ejecuta logout al hacer click (T-84)', () => {
+      const mockLogout = vi.fn();
+      render(
+        <AuthContext.Provider value={{ ...defaultMockAuth, logout: mockLogout }}>
+          <ProfilePage />
+        </AuthContext.Provider>
+      );
+
+      const logoutBtn = screen.getByRole('button', { name: /cerrar sesión/i });
+      expect(logoutBtn).toBeInTheDocument();
+      expect(logoutBtn.className).toMatch(TOUCH_TARGET_REGEX);
+
+      fireEvent.click(logoutBtn);
+      expect(mockLogout).toHaveBeenCalledTimes(1);
+    });
+
+    it('invalidates profile and mesocycle queries on successful profile update (T-93, RF-01, CA-01.5)', async () => {
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+      const updateSpy = vi.spyOn(apiClient.profile, 'update').mockResolvedValue(sampleCreatedProfile);
+
+      renderWithAuth({
+        mode: 'edit',
+        initialProfile: sampleCreatedProfile
+      });
+
+      const submitBtn = screen.getByRole('button', { name: /guardar cambios/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(updateSpy).toHaveBeenCalled();
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['profile'] });
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['mesocycle'] });
+      });
     });
   });
 });

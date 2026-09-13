@@ -23,6 +23,8 @@ const buttonVariants = cva(
           "bg-status-error-bg text-white hover:bg-status-error-bg/90 font-semibold shadow-sm",
         danger:
           "bg-status-error-bg text-white hover:bg-status-error-bg/90 font-semibold shadow-sm",
+        success:
+          "bg-status-success text-white hover:bg-status-success/90 font-semibold shadow-sm",
         link:
           "text-brand-primary underline-offset-4 hover:underline min-w-0 min-h-0",
       },
@@ -60,6 +62,7 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'size'>,
     VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
   isLoading?: boolean;
   fullWidth?: boolean;
   iconLeft?: React.ReactNode;
@@ -75,6 +78,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       fullWidth = false,
       isLoading = false,
       disabled = false,
+      asChild = false,
       iconLeft,
       iconRight,
       onClick,
@@ -95,6 +99,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       lastClickRef.current = now;
       onClick?.(e);
     };
+
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<any>;
+      return React.cloneElement(child, {
+        ref,
+        className: cn(
+          buttonVariants({ variant, size, fullWidth, className }),
+          child.props.className
+        ),
+        ...props,
+        ...child.props,
+        children: child.props.children,
+      });
+    }
 
     return (
       <ButtonPrimitive

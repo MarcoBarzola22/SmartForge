@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { FilterBottomSheet, FilterState } from './FilterBottomSheet';
 import { apiClient } from '../../api/client';
-import type { Exercise, MovementPattern, MuscleGroup } from '../../api';
+import type { Exercise, MovementPattern } from '../../api';
 import { Search, Dumbbell, Filter, ChevronRight, BookOpen } from 'lucide-react';
 
 export interface ExerciseCatalogPageProps {
@@ -54,18 +54,14 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
     };
   }, []);
 
-  // Filtrado instantáneo en memoria
+  // Filtrado instantáneo en memoria por nombre (T-88) y filtros biomecánicos
   const filteredExercises = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
     return exercises.filter((ex) => {
       if (query) {
         const nameMatch = ex.name.toLowerCase().includes(query);
-        const muscleMatch = ex.primary_muscle.toLowerCase().includes(query);
-        const secondariesMatch = (ex.secondary_muscles || []).some((m) =>
-          m.toLowerCase().includes(query)
-        );
-        if (!nameMatch && !muscleMatch && !secondariesMatch) {
+        if (!nameMatch) {
           return false;
         }
       }
@@ -114,8 +110,8 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
         className
       )}
     >
-      {/* Header Contextual Superior Simplificado (Sin carruseles horizontales) */}
-      <header className="sticky top-0 z-20 bg-surface-1/95 backdrop-blur-md border-b border-border-subtle p-4">
+      {/* Header Contextual Superior con Input de Búsqueda por Nombre (T-88) */}
+      <header className="sticky top-0 z-20 bg-surface-1/95 backdrop-blur-md border-b border-border-subtle p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl border border-brand-primary/20 shrink-0">
@@ -134,6 +130,18 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
           <Badge variant="default" className="text-xs font-mono shrink-0">
             {filteredExercises.length}
           </Badge>
+        </div>
+
+        {/* Input de búsqueda por texto superior (T-88) */}
+        <div className="relative w-full">
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar ejercicio por nombre..."
+            iconLeft={<Search className="w-4 h-4" />}
+            className="w-full min-h-[48px] text-xs h-12 bg-surface-2 border-border-interactive"
+          />
         </div>
       </header>
 
@@ -208,31 +216,21 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
         )}
       </main>
 
-      {/* Dock de Búsqueda y Filtros en la Mitad Inferior (Sticky en zona de pulgar, RF-04, CF-06) */}
+      {/* Dock de Filtros en la Mitad Inferior (Sticky en zona de pulgar, RF-04, CF-06) */}
       <div
         data-testid="catalog-search-dock"
         className="fixed bottom-0 inset-x-0 z-30 w-full max-w-[390px] mx-auto p-3 bg-surface-1/95 backdrop-blur-md border-t border-border-interactive flex items-center gap-2 shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
       >
-        <div className="relative flex-1 min-w-0">
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Buscar ejercicio por nombre o músculo..."
-            iconLeft={<Search className="w-4 h-4" />}
-            className="w-full min-h-[48px] text-xs h-12 bg-surface-2 border-border-interactive"
-          />
-        </div>
-
         <Button
           type="button"
           variant={hasActiveFilters ? 'primary' : 'secondary'}
           onClick={() => setIsFilterSheetOpen(true)}
           aria-label="Filtrar catálogo"
-          className="shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] h-12 px-3 flex items-center justify-center gap-1.5 rounded-xl font-semibold text-xs"
+          fullWidth
+          className="touch-target min-h-[48px] h-12 px-4 flex items-center justify-center gap-2 rounded-xl font-semibold text-xs"
         >
           <Filter className="w-4 h-4" />
-          <span className="hidden xs:inline">Filtrar</span>
+          <span>Filtrar catálogo</span>
           {hasActiveFilters && (
             <span className="w-2 h-2 rounded-full bg-brand-contrast shrink-0" />
           )}

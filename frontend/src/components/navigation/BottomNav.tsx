@@ -50,7 +50,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     <nav
       aria-label="Navegación principal"
       className={cn(
-        'w-full max-w-[390px] mx-auto h-16 min-h-[64px] pb-[env(safe-area-inset-bottom)] bg-surface-1 border-t border-border-subtle select-none shadow-lg px-2 flex items-center shrink-0',
+        'fixed bottom-0 left-0 right-0 w-full z-50 max-w-[390px] mx-auto h-16 min-h-[64px] pb-[env(safe-area-inset-bottom)] bg-surface-1 border-t border-border-subtle select-none shadow-lg px-2 flex items-center shrink-0',
         className
       )}
     >

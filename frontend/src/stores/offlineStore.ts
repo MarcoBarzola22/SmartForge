@@ -1,3 +1,5 @@
+import type { TrainingSession, SessionPlan } from '../api';
+
 /**
  * Offline Store using IndexedDB for SmartForge PWA (RNF-03, DT-04).
  * Stores active routine, local sessions, check-ins, set logs, pain reports, and sync queue.
@@ -92,6 +94,9 @@ class OfflineStore {
   private dbPromise: Promise<IDBDatabase> | null = null;
 
   private async getDB(): Promise<IDBDatabase> {
+    if (typeof indexedDB === 'undefined') {
+      return Promise.reject(new Error('indexedDB is not supported or defined in this environment'));
+    }
     if (this.dbPromise) {
       return this.dbPromise;
     }
@@ -351,8 +356,158 @@ class OfflineStore {
     });
   }
 
+  // --- Active Session Persistence (T-91, RF-04, RNF-03) ---
+  async saveActiveSession(session: TrainingSession, sessionPlan?: SessionPlan): Promise<void> {
+    try {
+      localStorage.setItem('smartforge_active_session', JSON.stringify(session));
+      if (sessionPlan) {
+        localStorage.setItem('smartforge_active_session_plan', JSON.stringify(sessionPlan));
+      }
+    } catch (e) {
+      console.warn('Could not mirror active session to localStorage', e);
+    }
+
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const db = await this.getDB();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('sessions', 'readwrite');
+          const store = tx.objectStore('sessions');
+          store.put({
+            id: session.id,
+            sessionPlanId: session.session_plan_id,
+            athleteId: session.athlete_id,
+            status: session.status,
+            startedAt: session.started_at,
+            completedAt: session.completed_at,
+            clientTimestamp: new Date().toISOString(),
+            synced: true,
+            rawSession: session,
+            sessionPlan: sessionPlan
+          });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (e) {
+        console.warn('Could not save active session to IndexedDB', e);
+      }
+    }
+  }
+
+  async getActiveSession(): Promise<{ session: TrainingSession; sessionPlan?: SessionPlan } | null> {
+    // 1. Check localStorage first for instant synchronous/page-reopen retrieval
+    try {
+      const cached = localStorage.getItem('smartforge_active_session');
+      if (cached) {
+        const parsed = JSON.parse(cached) as TrainingSession;
+        if (parsed && parsed.status === 'in_progress') {
+          let plan: SessionPlan | undefined;
+          const cachedPlan = localStorage.getItem('smartforge_active_session_plan');
+          if (cachedPlan) {
+            plan = JSON.parse(cachedPlan);
+          }
+          return { session: parsed, sessionPlan: plan };
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read active session from localStorage', e);
+    }
+
+    // 2. Fallback to IndexedDB
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const db = await this.getDB();
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction('sessions', 'readonly');
+          const store = tx.objectStore('sessions');
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const list = (req.result as any[]) || [];
+            const active = list.find((s) => s.status === 'in_progress');
+            if (active) {
+              if (active.rawSession) {
+                resolve({ session: active.rawSession, sessionPlan: active.sessionPlan });
+              } else {
+                const fallback: TrainingSession = {
+                  id: active.id,
+                  athlete_id: active.athleteId || '',
+                  session_plan_id: active.sessionPlanId,
+                  status: active.status,
+                  started_at: active.startedAt || new Date().toISOString(),
+                  completed_at: active.completedAt,
+                  set_logs: [],
+                  pain_reports: []
+                };
+                resolve({ session: fallback, sessionPlan: active.sessionPlan });
+              }
+            } else {
+              resolve(null);
+            }
+          };
+          req.onerror = () => reject(req.error);
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  async clearActiveSession(sessionId?: string): Promise<void> {
+    try {
+      localStorage.removeItem('smartforge_active_session');
+      localStorage.removeItem('smartforge_active_session_plan');
+    } catch {
+      // ignore
+    }
+
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const db = await this.getDB();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('sessions', 'readwrite');
+          const store = tx.objectStore('sessions');
+          if (sessionId) {
+            const req = store.get(sessionId);
+            req.onsuccess = () => {
+              const item = req.result;
+              if (item) {
+                item.status = 'completed';
+                store.put(item);
+              }
+              resolve();
+            };
+            req.onerror = () => reject(req.error);
+          } else {
+            const req = store.getAll();
+            req.onsuccess = () => {
+              const items = req.result as any[];
+              items.forEach((item) => {
+                if (item.status === 'in_progress') {
+                  item.status = 'completed';
+                  store.put(item);
+                }
+              });
+              resolve();
+            };
+            req.onerror = () => reject(req.error);
+          }
+        });
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   // --- Reset / Purge ---
   async clearAllOfflineData(): Promise<void> {
+    try {
+      localStorage.removeItem('smartforge_active_session');
+      localStorage.removeItem('smartforge_active_session_plan');
+    } catch {
+      // ignore
+    }
     const db = await this.getDB();
     const storeNames = ['routine', 'sessions', 'checkins', 'set_logs', 'pain_reports', 'sync_queue'];
     return new Promise((resolve, reject) => {
