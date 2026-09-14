@@ -8,7 +8,7 @@ export type TrainingGoal = 'hipertrofia' | 'fuerza' | 'mixto';
 
 export type PeriodizationType = 'lineal' | 'ondulante';
 
-export type MesocycleStatus = 'active' | 'completed' | 'archived';
+export type MesocycleStatus = 'active' | 'completed' | 'cancelled' | 'archived' | 'deload_skipped';
 
 export type SwapReason = 'falta_equipamiento' | 'preferencia_personal' | 'molestia_articular';
 
@@ -198,9 +198,17 @@ export type MesocycleDetail = {
   weeks: WeekPlan[];
 };
 
+export type ExercisesPerSessionPreference = {
+  mode: 'manual' | 'recommended';
+  customCount?: number | null;
+};
+
 export type GenerateMesocycleRequest = {
   target_goal?: TrainingGoal;
   custom_duration_weeks?: number;
+  availableDays?: number;
+  sessionDurationMinutes?: 30 | 45 | 60 | 75 | 90 | 120;
+  exercisesPerSessionPreference?: ExercisesPerSessionPreference;
 };
 
 export type SwapExerciseRequest = {
@@ -263,5 +271,105 @@ export type ValidationErrorResponse = {
   error: string;
   code: string;
   details: ErrorDetail[];
+};
+
+export type WeightLogInput = {
+  weightKg: number;
+  loggedDate: string;
+};
+
+export type CreateWeightLogRequest = {
+  weight_kg: number;
+  logged_date: string;
+};
+
+export type UpdateWeightLogRequest = {
+  weight_kg: number;
+  logged_date?: string;
+};
+
+export type WeightLogItem = {
+  id: string;
+  athlete_id: string;
+  weight_kg: number;
+  calendar_week_start: string;
+  logged_date: string;
+  delta_kg?: number | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type WeightLogResponse = {
+  log: WeightLogItem;
+};
+
+export type WeightLogListResponse = {
+  logs: WeightLogItem[];
+};
+
+export type RoutineTimeBlockItem = {
+  duration_minutes: 30 | 45 | 60 | 75 | 90 | 120;
+  min_exercises: number;
+  max_exercises: number;
+  recommended_exercises: number;
+};
+
+export type RoutineTimeBlockConfigResponse = {
+  available_blocks: RoutineTimeBlockItem[];
+};
+
+export type RoutineTimeBlockConfig = {
+  availableBlocks: RoutineTimeBlockItem[];
+};
+
+export type LoadType = 'bodyweight' | 'bodyweight_loadable' | 'assisted_bodyweight' | 'external_load';
+
+export type MesocycleCreateV2Input = {
+  availableDays: number;
+  sessionDurationMinutes: 30 | 45 | 60 | 75 | 90 | 120;
+  exercisesPerSessionPreference: ExercisesPerSessionPreference;
+  targetGoal?: TrainingGoal;
+  customDurationWeeks?: number;
+};
+
+export type ExerciseBaselineSnapshot = {
+  loadText: string;
+  e1rmKg: number;
+};
+
+export type ExerciseFinalPerformance = {
+  loadText: string;
+  e1rmKg: number;
+  executed: boolean;
+};
+
+export type ExerciseProgressionDelta = {
+  deltaKg: number;
+  deltaPercent: number;
+};
+
+export type ExerciseProgressionItem = {
+  exerciseId: string;
+  exerciseName: string;
+  loadType: LoadType;
+  baseline: ExerciseBaselineSnapshot;
+  final: ExerciseFinalPerformance;
+  progress?: ExerciseProgressionDelta;
+};
+
+export type MesocycleHistoryItem = {
+  id: string;
+  name: string;
+  goal: string;
+  startDate: string;
+  endDate?: string | null;
+  status: 'completed' | 'deload_skipped' | 'cancelled';
+  adherencePercent: number;
+  adherenceDetails?: string;
+  exerciseProgressions: ExerciseProgressionItem[];
+};
+
+export type MesocycleHistoryResponse = {
+  mesocycles: MesocycleHistoryItem[];
 };
 

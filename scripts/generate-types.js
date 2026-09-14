@@ -29,8 +29,20 @@ function resolveZodType(propName, schema, required = false) {
     const refName = schema.$ref.split('/').pop();
     zodExpr = `${refName}Schema`;
   } else if (schema.enum) {
-    const values = schema.enum.map((v) => `'${v}'`).join(', ');
-    zodExpr = `z.enum([${values}])`;
+    if (schema.type === 'integer' || schema.type === 'number' || schema.enum.every((v) => typeof v === 'number')) {
+      const literals = schema.enum.map((v) => `z.literal(${v})`).join(', ');
+      zodExpr = `z.union([${literals}])`;
+    } else {
+      const values = schema.enum.map((v) => `'${v}'`).join(', ');
+      zodExpr = `z.enum([${values}])`;
+    }
+  } else if (Array.isArray(schema.type)) {
+    const isNullable = schema.type.includes('null');
+    const actualTypes = schema.type.filter((t) => t !== 'null');
+    const baseType = actualTypes[0];
+    const subSchema = { ...schema, type: baseType };
+    const baseZod = resolveZodType(propName, subSchema, true);
+    zodExpr = isNullable ? `${baseZod}.nullable()` : baseZod;
   } else if (schema.type === 'string') {
     if (schema.format === 'uuid') {
       zodExpr = 'z.string().uuid()';
@@ -135,7 +147,7 @@ let frontendCode = `/**
 for (const name of orderedSchemas) {
   const schema = schemas[name];
   if (schema.enum) {
-    const enumTypes = schema.enum.map((v) => `'${v}'`).join(' | ');
+    const enumTypes = schema.enum.map((v) => typeof v === 'number' ? `${v}` : `'${v}'`).join(' | ');
     frontendCode += `export type ${name} = ${enumTypes};\n\n`;
   } else if (schema.properties) {
     frontendCode += `export type ${name} = {\n`;
@@ -145,7 +157,16 @@ for (const name of orderedSchemas) {
       if (pSchema.$ref) {
         tsType = pSchema.$ref.split('/').pop();
       } else if (pSchema.enum) {
-        tsType = pSchema.enum.map((v) => `'${v}'`).join(' | ');
+        tsType = pSchema.enum.map((v) => typeof v === 'number' ? `${v}` : `'${v}'`).join(' | ');
+      } else if (Array.isArray(pSchema.type)) {
+        const isNullable = pSchema.type.includes('null');
+        const actualTypes = pSchema.type.filter((t) => t !== 'null');
+        const baseType = actualTypes[0];
+        let baseTs = 'unknown';
+        if (baseType === 'string') baseTs = 'string';
+        else if (baseType === 'integer' || baseType === 'number') baseTs = 'number';
+        else if (baseType === 'boolean') baseTs = 'boolean';
+        tsType = isNullable ? `${baseTs} | null` : baseTs;
       } else if (pSchema.type === 'string') {
         tsType = 'string';
       } else if (pSchema.type === 'integer' || pSchema.type === 'number') {

@@ -3,16 +3,34 @@ import type {
   Exercise,
   ExerciseAlternative,
   MovementPattern,
-  MuscleGroup
+  MuscleGroup,
+  LoadType
 } from '../schemas/generated/schemas.js';
+
+export type { LoadType };
+
+export interface ExerciseRecord extends Exercise {
+  load_type: LoadType;
+}
+
+export interface ExerciseAlternativeRecord extends Omit<ExerciseAlternative, 'alternative_exercise'> {
+  alternative_exercise: ExerciseRecord;
+}
 
 export interface ExerciseFilters {
   movement_pattern?: MovementPattern;
   primary_muscle?: MuscleGroup;
   equipment_id?: string;
+  load_type?: LoadType;
+  load_types?: LoadType[];
   search?: string;
   limit?: number;
   offset?: number;
+}
+
+export interface FindAlternativesOptions {
+  equipmentIds?: string[];
+  allowedLoadTypes?: LoadType[];
 }
 
 export interface DbClient {
@@ -22,7 +40,7 @@ export interface DbClient {
 export class ExerciseRepository {
   constructor(private readonly db: DbClient = pool) {}
 
-  private mapRowToExercise(row: Record<string, unknown>): Exercise {
+  private mapRowToExercise(row: Record<string, unknown>): ExerciseRecord {
     return {
       id: String(row.id),
       name: String(row.name),
@@ -37,15 +55,16 @@ export class ExerciseRepository {
       video_url: String(row.video_url),
       video_fallback_url: String(row.video_fallback_url),
       instructions: String(row.instructions),
-      is_active: Boolean(row.is_active)
+      is_active: Boolean(row.is_active),
+      load_type: (row.load_type as LoadType) || 'external_load'
     };
   }
 
-  async findById(id: string): Promise<Exercise | null> {
+  async findById(id: string): Promise<ExerciseRecord | null> {
     const query = `
       SELECT id, name, movement_pattern, primary_muscle, secondary_muscles,
              equipment_id, is_compound, initial_load_ratio, video_url,
-             video_fallback_url, instructions, is_active
+             video_fallback_url, instructions, is_active, load_type
       FROM exercise
       WHERE id = $1 AND is_active = true;
     `;
@@ -58,7 +77,7 @@ export class ExerciseRepository {
     return this.mapRowToExercise(result.rows[0] as Record<string, unknown>);
   }
 
-  async findAll(filters: ExerciseFilters = {}): Promise<Exercise[]> {
+  async findAll(filters: ExerciseFilters = {}): Promise<ExerciseRecord[]> {
     const conditions: string[] = ['is_active = true'];
     const params: unknown[] = [];
     let paramIndex = 1;
@@ -78,6 +97,16 @@ export class ExerciseRepository {
       params.push(filters.equipment_id);
     }
 
+    if (filters.load_type) {
+      conditions.push(`load_type = $${paramIndex++}`);
+      params.push(filters.load_type);
+    }
+
+    if (filters.load_types && filters.load_types.length > 0) {
+      conditions.push(`load_type = ANY($${paramIndex++})`);
+      params.push(filters.load_types);
+    }
+
     if (filters.search && filters.search.trim() !== '') {
       conditions.push(`name ILIKE $${paramIndex++}`);
       params.push(`%${filters.search.trim()}%`);
@@ -86,7 +115,7 @@ export class ExerciseRepository {
     let sql = `
       SELECT id, name, movement_pattern, primary_muscle, secondary_muscles,
              equipment_id, is_compound, initial_load_ratio, video_url,
-             video_fallback_url, instructions, is_active
+             video_fallback_url, instructions, is_active, load_type
       FROM exercise
       WHERE ${conditions.join(' AND ')}
       ORDER BY name ASC
@@ -110,16 +139,35 @@ export class ExerciseRepository {
 
   async findAlternatives(
     exerciseId: string,
-    equipmentIds?: string[]
-  ): Promise<ExerciseAlternative[]> {
+    equipmentIdsOrOptions?: string[] | FindAlternativesOptions,
+    allowedLoadTypes?: LoadType[]
+  ): Promise<ExerciseAlternativeRecord[]> {
+    let equipmentIds: string[] | undefined;
+    let loadTypes: LoadType[] | undefined = allowedLoadTypes;
+
+    if (Array.isArray(equipmentIdsOrOptions)) {
+      equipmentIds = equipmentIdsOrOptions;
+    } else if (equipmentIdsOrOptions && typeof equipmentIdsOrOptions === 'object') {
+      equipmentIds = equipmentIdsOrOptions.equipmentIds;
+      if (equipmentIdsOrOptions.allowedLoadTypes) {
+        loadTypes = equipmentIdsOrOptions.allowedLoadTypes;
+      }
+    }
+
     const params: unknown[] = [exerciseId];
     let equipmentClause = '';
+    let loadTypeClause = '';
 
     if (equipmentIds && equipmentIds.length > 0) {
       // Bodyweight is always available in addition to athlete's equipment
       const availableEquipments = Array.from(new Set([...equipmentIds, 'bodyweight']));
       params.push(availableEquipments);
-      equipmentClause = 'AND (e.equipment_id = ANY($2))';
+      equipmentClause = `AND (e.equipment_id = ANY($${params.length}))`;
+    }
+
+    if (loadTypes && loadTypes.length > 0) {
+      params.push(loadTypes);
+      loadTypeClause = `AND (e.load_type = ANY($${params.length}))`;
     }
 
     const sql = `
@@ -136,12 +184,14 @@ export class ExerciseRepository {
              e.video_url AS alt_video_url,
              e.video_fallback_url AS alt_video_fallback_url,
              e.instructions AS alt_instructions,
-             e.is_active AS alt_is_active
+             e.is_active AS alt_is_active,
+             e.load_type AS alt_load_type
       FROM exercise_alternative ea
       JOIN exercise e ON ea.alternative_exercise_id = e.id
       WHERE ea.original_exercise_id = $1
         AND e.is_active = true
         ${equipmentClause}
+        ${loadTypeClause}
       ORDER BY ea.similarity_score DESC, e.name ASC;
     `;
 
@@ -166,18 +216,19 @@ export class ExerciseRepository {
           video_url: String(row.alt_video_url),
           video_fallback_url: String(row.alt_video_fallback_url),
           instructions: String(row.alt_instructions),
-          is_active: Boolean(row.alt_is_active)
+          is_active: Boolean(row.alt_is_active),
+          load_type: (row.alt_load_type as LoadType) || 'external_load'
         }
       };
     });
   }
 
-  async findByEquipment(equipmentIds: string[]): Promise<Exercise[]> {
+  async findByEquipment(equipmentIds: string[]): Promise<ExerciseRecord[]> {
     const availableEquipments = Array.from(new Set([...equipmentIds, 'bodyweight']));
     const sql = `
       SELECT id, name, movement_pattern, primary_muscle, secondary_muscles,
              equipment_id, is_compound, initial_load_ratio, video_url,
-             video_fallback_url, instructions, is_active
+             video_fallback_url, instructions, is_active, load_type
       FROM exercise
       WHERE is_active = true
         AND equipment_id = ANY($1)
@@ -185,6 +236,24 @@ export class ExerciseRepository {
     `;
 
     const result = await this.db.query(sql, [availableEquipments]);
+    return (result.rows || []).map((row) =>
+      this.mapRowToExercise(row as Record<string, unknown>)
+    );
+  }
+
+  async findByLoadType(loadTypes: LoadType | LoadType[]): Promise<ExerciseRecord[]> {
+    const types = Array.isArray(loadTypes) ? loadTypes : [loadTypes];
+    const sql = `
+      SELECT id, name, movement_pattern, primary_muscle, secondary_muscles,
+             equipment_id, is_compound, initial_load_ratio, video_url,
+             video_fallback_url, instructions, is_active, load_type
+      FROM exercise
+      WHERE is_active = true
+        AND load_type = ANY($1)
+      ORDER BY name ASC;
+    `;
+
+    const result = await this.db.query(sql, [types]);
     return (result.rows || []).map((row) =>
       this.mapRowToExercise(row as Record<string, unknown>)
     );
@@ -208,6 +277,16 @@ export class ExerciseRepository {
     if (filters.equipment_id) {
       conditions.push(`equipment_id = $${paramIndex++}`);
       params.push(filters.equipment_id);
+    }
+
+    if (filters.load_type) {
+      conditions.push(`load_type = $${paramIndex++}`);
+      params.push(filters.load_type);
+    }
+
+    if (filters.load_types && filters.load_types.length > 0) {
+      conditions.push(`load_type = ANY($${paramIndex++})`);
+      params.push(filters.load_types);
     }
 
     if (filters.search && filters.search.trim() !== '') {

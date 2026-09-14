@@ -35,6 +35,24 @@ export interface CreateWeekPlanData {
   sessions: CreateSessionPlanData[];
 }
 
+export type CompletionReason = 'normal' | 'deload_skipped' | 'cancelled_user' | 'cancelled_injury';
+
+export interface CancelMesocycleResult {
+  mesocycleId: string;
+  previousStatus: MesocycleStatus;
+  currentStatus: MesocycleStatus;
+  cancelledSessionsCount: number;
+  cancelledAt: string | null;
+  wasCompleted: boolean;
+}
+
+export interface MesocycleDetailWithV2 extends MesocycleDetail {
+  session_duration_minutes?: number;
+  target_exercises_per_session?: number;
+  completion_reason?: CompletionReason;
+  cancelled_at?: string;
+}
+
 export interface CreateMesocycleData {
   athlete_id: string;
   name: string;
@@ -44,6 +62,8 @@ export interface CreateMesocycleData {
   duration_weeks: number;
   start_date?: string;
   weeks: CreateWeekPlanData[];
+  session_duration_minutes?: number;
+  target_exercises_per_session?: number;
 }
 
 export interface PoolClientLike {
@@ -106,7 +126,7 @@ export class MesocycleRepository {
    * Persiste un mesociclo completo (con semanas, sesiones y ejercicios asignados)
    * de forma atómica dentro de una única transacción SQL.
    */
-  async create(data: CreateMesocycleData): Promise<MesocycleDetail> {
+  async create(data: CreateMesocycleData): Promise<MesocycleDetailWithV2> {
     const client = await this.dbPool.connect();
 
     try {
@@ -115,11 +135,12 @@ export class MesocycleRepository {
       const insertMesocycleSql = `
         INSERT INTO mesocycle (
           athlete_id, name, experience_level, training_goal, periodization_type,
-          duration_weeks, status, start_date
+          duration_weeks, status, start_date, session_duration_minutes, target_exercises_per_session
         )
-        VALUES ($1, $2, $3, $4, $5, $6, 'active', COALESCE($7, CURRENT_DATE))
+        VALUES ($1, $2, $3, $4, $5, $6, 'active', COALESCE($7, CURRENT_DATE), $8, $9)
         RETURNING id, athlete_id, name, experience_level, training_goal, periodization_type,
-                  duration_weeks, status, start_date, end_date, created_at, updated_at;
+                  duration_weeks, status, start_date, end_date, session_duration_minutes,
+                  target_exercises_per_session, completion_reason, cancelled_at, created_at, updated_at;
       `;
 
       const mesoResult = await client.query(insertMesocycleSql, [
@@ -129,7 +150,9 @@ export class MesocycleRepository {
         data.training_goal,
         data.periodization_type,
         data.duration_weeks,
-        data.start_date || null
+        data.start_date || null,
+        data.session_duration_minutes ?? null,
+        data.target_exercises_per_session ?? null
       ]);
 
       const mesoRow = mesoResult.rows[0] as Record<string, unknown>;
@@ -281,6 +304,10 @@ export class MesocycleRepository {
         status: mesoRow.status as MesocycleStatus,
         start_date: formatDateString(mesoRow.start_date),
         end_date: formatOptionalDateString(mesoRow.end_date),
+        session_duration_minutes: mesoRow.session_duration_minutes ? Number(mesoRow.session_duration_minutes) : undefined,
+        target_exercises_per_session: mesoRow.target_exercises_per_session ? Number(mesoRow.target_exercises_per_session) : undefined,
+        completion_reason: mesoRow.completion_reason ? (mesoRow.completion_reason as CompletionReason) : undefined,
+        cancelled_at: formatOptionalDateString(mesoRow.cancelled_at),
         weeks: createdWeeks
       };
     } catch (err) {
@@ -294,10 +321,11 @@ export class MesocycleRepository {
   /**
    * Recupera la estructura jerárquica completa de un mesociclo por ID.
    */
-  async findById(id: string): Promise<MesocycleDetail | null> {
+  async findById(id: string): Promise<MesocycleDetailWithV2 | null> {
     const mesoSql = `
       SELECT id, athlete_id, name, experience_level, training_goal,
-             periodization_type, duration_weeks, status, start_date, end_date
+             periodization_type, duration_weeks, status, start_date, end_date,
+             session_duration_minutes, target_exercises_per_session, completion_reason, cancelled_at
       FROM mesocycle
       WHERE id = $1;
     `;
@@ -331,6 +359,10 @@ export class MesocycleRepository {
         status: mesoRow.status as MesocycleStatus,
         start_date: formatDateString(mesoRow.start_date),
         end_date: formatOptionalDateString(mesoRow.end_date),
+        session_duration_minutes: mesoRow.session_duration_minutes ? Number(mesoRow.session_duration_minutes) : undefined,
+        target_exercises_per_session: mesoRow.target_exercises_per_session ? Number(mesoRow.target_exercises_per_session) : undefined,
+        completion_reason: mesoRow.completion_reason ? (mesoRow.completion_reason as CompletionReason) : undefined,
+        cancelled_at: formatOptionalDateString(mesoRow.cancelled_at),
         weeks: []
       };
     }
@@ -430,14 +462,18 @@ export class MesocycleRepository {
       status: mesoRow.status as MesocycleStatus,
       start_date: formatDateString(mesoRow.start_date),
       end_date: formatOptionalDateString(mesoRow.end_date),
+      session_duration_minutes: mesoRow.session_duration_minutes ? Number(mesoRow.session_duration_minutes) : undefined,
+      target_exercises_per_session: mesoRow.target_exercises_per_session ? Number(mesoRow.target_exercises_per_session) : undefined,
+      completion_reason: mesoRow.completion_reason ? (mesoRow.completion_reason as CompletionReason) : undefined,
+      cancelled_at: formatOptionalDateString(mesoRow.cancelled_at),
       weeks
     };
   }
 
   /**
-   * Obtiene el mesociclo activo actual de un atleta.
+   * Obtiene el mesociclo activo actual de un atleta respetando el índice único condicional (RF-07 CA-07.1).
    */
-  async findActiveByAthleteId(athleteId: string): Promise<MesocycleDetail | null> {
+  async findActiveByAthleteId(athleteId: string): Promise<MesocycleDetailWithV2 | null> {
     const sql = `
       SELECT id
       FROM mesocycle
@@ -453,6 +489,192 @@ export class MesocycleRepository {
 
     const row = res.rows[0] as Record<string, unknown>;
     return this.findById(String(row.id));
+  }
+
+  /**
+   * Cancela el mesociclo activo de un atleta o verifica si ya fue completado (RF-07 CA-07.5, CA-07.7).
+   * Si estaba completado, prevalece el estado 'completed' (resolución determinista).
+   * Si estaba activo, transiciona a 'cancelled', registra motivo y timestamp, y cancela en lote las sesiones no completadas.
+   */
+  async cancelActiveByAthleteId(
+    athleteId: string,
+    reason: CompletionReason = 'cancelled_user'
+  ): Promise<CancelMesocycleResult | null> {
+    const client = await this.dbPool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Buscar mesociclo activo del atleta
+      const checkActiveSql = `
+        SELECT id, athlete_id, status
+        FROM mesocycle
+        WHERE athlete_id = $1 AND status = 'active'
+        FOR UPDATE;
+      `;
+      const activeRes = await client.query(checkActiveSql, [athleteId]);
+
+      if (activeRes.rows && activeRes.rows.length > 0) {
+        const mesoRow = activeRes.rows[0] as Record<string, unknown>;
+        const mesoId = String(mesoRow.id);
+
+        // Actualizar mesociclo a cancelled
+        const updateMesoSql = `
+          UPDATE mesocycle
+          SET status = 'cancelled',
+              completion_reason = $2,
+              cancelled_at = NOW(),
+              updated_at = NOW()
+          WHERE id = $1
+          RETURNING id, status, cancelled_at;
+        `;
+        const updatedMesoRes = await client.query(updateMesoSql, [mesoId, reason]);
+        const updatedRow = updatedMesoRes.rows[0] as Record<string, unknown>;
+
+        // Cancelar en lote las sesiones no completadas de este mesociclo
+        const cancelSessionsSql = `
+          UPDATE session
+          SET status = 'cancelled',
+              completed_at = COALESCE(completed_at, NOW()),
+              updated_at = NOW()
+          FROM session_plan sp
+          JOIN week_plan wp ON sp.week_plan_id = wp.id
+          WHERE session.session_plan_id = sp.id
+            AND wp.mesocycle_id = $1
+            AND session.status != 'completed';
+        `;
+        const cancelSessionsRes = await client.query(cancelSessionsSql, [mesoId]);
+        const cancelledCount = Number(cancelSessionsRes.rowCount ?? 0);
+
+        await client.query('COMMIT');
+
+        return {
+          mesocycleId: mesoId,
+          previousStatus: 'active',
+          currentStatus: 'cancelled',
+          cancelledSessionsCount: cancelledCount,
+          cancelledAt: formatOptionalDateString(updatedRow.cancelled_at) ?? new Date().toISOString(),
+          wasCompleted: false
+        };
+      }
+
+      // Si no hay activo, verificar si el más reciente fue 'completed' para resolución determinista (CA-07.5)
+      const checkCompletedSql = `
+        SELECT id, athlete_id, status
+        FROM mesocycle
+        WHERE athlete_id = $1 AND status = 'completed'
+        ORDER BY updated_at DESC
+        LIMIT 1;
+      `;
+      const completedRes = await client.query(checkCompletedSql, [athleteId]);
+
+      if (completedRes.rows && completedRes.rows.length > 0) {
+        const completedRow = completedRes.rows[0] as Record<string, unknown>;
+        await client.query('COMMIT');
+
+        return {
+          mesocycleId: String(completedRow.id),
+          previousStatus: 'completed',
+          currentStatus: 'completed',
+          cancelledSessionsCount: 0,
+          cancelledAt: null,
+          wasCompleted: true
+        };
+      }
+
+      await client.query('COMMIT');
+      return null;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Cancela un mesociclo específico por ID y atleta (RF-07).
+   */
+  async cancelById(
+    mesocycleId: string,
+    athleteId: string,
+    reason: CompletionReason = 'cancelled_user'
+  ): Promise<CancelMesocycleResult | null> {
+    const client = await this.dbPool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const checkSql = `
+        SELECT id, athlete_id, status
+        FROM mesocycle
+        WHERE id = $1 AND athlete_id = $2
+        FOR UPDATE;
+      `;
+      const checkRes = await client.query(checkSql, [mesocycleId, athleteId]);
+
+      if (!checkRes.rows || checkRes.rows.length === 0) {
+        await client.query('COMMIT');
+        return null;
+      }
+
+      const row = checkRes.rows[0] as Record<string, unknown>;
+      const status = row.status as MesocycleStatus;
+
+      if (status === 'completed') {
+        await client.query('COMMIT');
+        return {
+          mesocycleId,
+          previousStatus: 'completed',
+          currentStatus: 'completed',
+          cancelledSessionsCount: 0,
+          cancelledAt: null,
+          wasCompleted: true
+        };
+      }
+
+      const updateSql = `
+        UPDATE mesocycle
+        SET status = 'cancelled',
+            completion_reason = $2,
+            cancelled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, status, cancelled_at;
+      `;
+      const updatedRes = await client.query(updateSql, [mesocycleId, reason]);
+      const updatedRow = updatedRes.rows[0] as Record<string, unknown>;
+
+      const cancelSessionsSql = `
+        UPDATE session
+        SET status = 'cancelled',
+            completed_at = COALESCE(completed_at, NOW()),
+            updated_at = NOW()
+        FROM session_plan sp
+        JOIN week_plan wp ON sp.week_plan_id = wp.id
+        WHERE session.session_plan_id = sp.id
+          AND wp.mesocycle_id = $1
+          AND session.status != 'completed';
+      `;
+      const cancelSessionsRes = await client.query(cancelSessionsSql, [mesocycleId]);
+      const cancelledCount = Number(cancelSessionsRes.rowCount ?? 0);
+
+      await client.query('COMMIT');
+
+      return {
+        mesocycleId,
+        previousStatus: status,
+        currentStatus: 'cancelled',
+        cancelledSessionsCount: cancelledCount,
+        cancelledAt: formatOptionalDateString(updatedRow.cancelled_at) ?? new Date().toISOString(),
+        wasCompleted: false
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   /**

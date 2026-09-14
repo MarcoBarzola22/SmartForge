@@ -31,6 +31,8 @@ tags:
     description: Cálculo de sobrecarga progresiva y ajustes por fatiga
   - name: Sync
     description: Sincronización offline de datos
+  - name: BodyWeight
+    description: Registro semanal y seguimiento del historial de peso corporal
 
 paths:
   /health:
@@ -426,6 +428,89 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: No existe un mesociclo activo para el atleta.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /mesocycles/active/cancel:
+    post:
+      tags:
+        - Mesocycles
+      summary: Cancelar el mesociclo activo actual
+      description: Cancela el mesociclo activo actual preservando en el historial las sesiones y series ya registradas. Si el mesociclo ya estaba completado, prevalece el estado completado de forma idempotente.
+      operationId: cancelActiveMesocycle
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: "Imprevisto laboral o cambio de disponibilidad horaria"
+      responses:
+        '200':
+          description: Mesociclo cancelado exitosamente o preservado como completado.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - message
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - cancelled
+                      - completed
+                      - deload_skipped
+                    example: cancelled
+                  message:
+                    type: string
+                    example: Mesociclo cancelado exitosamente. Sesiones guardadas en historial.
+                  cancelled_at:
+                    type:
+                      - string
+                      - "null"
+                    format: date-time
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: No existe un mesociclo activo para cancelar.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /mesocycles/history:
+    get:
+      tags:
+        - Mesocycles
+      summary: Obtener historial de mesociclos con comparativas de progreso y 1RM
+      description: Retorna la lista cronológica inversa de mesociclos finalizados o cancelados (con al menos una sesión completada), porcentaje de adherencia y comparativas de fuerza máxima estimada (1RM).
+      operationId: getMesocycleHistory
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Historial de mesociclos recuperado exitosamente.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MesocycleHistoryItem'
+        '401':
+          description: No autorizado.
           content:
             application/json:
               schema:
@@ -890,6 +975,147 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /athletes/me/weight-logs:
+    get:
+      tags:
+        - BodyWeight
+      summary: Obtener historial cronológico de pesajes corporales
+      description: Retorna la lista de pesajes semanales registrados por el atleta ordenados cronológicamente con su variación (delta) respecto al registro previo.
+      operationId: getWeightLogs
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Historial de pesajes recuperado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightLogListResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - BodyWeight
+      summary: Registrar peso corporal semanal
+      description: Registra el pesaje semanal del atleta para la semana actual o pasada (carga retroactiva). Valida la guarda de 120 horas entre fechas de pesaje y unicidad semanal.
+      operationId: createWeightLog
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWeightLogRequest'
+      responses:
+        '201':
+          description: Pesaje registrado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightLogResponse'
+        '400':
+          description: Datos inválidos (peso menor a 30.0 kg o mayor a 300.0 kg).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Ya existe un registro para esa semana calendario o intervalo menor a 120 horas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /athletes/me/weight-logs/{id}:
+    put:
+      tags:
+        - BodyWeight
+      summary: Editar pesaje semanal existente
+      description: Permite modificar el valor en kg y/o la fecha de un pesaje dentro de su misma semana calendario, respetando la guarda de 120 horas.
+      operationId: updateWeightLog
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID del registro de pesaje a editar
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWeightLogRequest'
+      responses:
+        '200':
+          description: Pesaje actualizado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeightLogResponse'
+        '400':
+          description: Datos inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Registro de pesaje no encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Fecha fuera de la semana calendario original o colisión con guarda de 120 horas.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /routines/config/time-blocks:
+    get:
+      tags:
+        - Routines
+      summary: Obtener configuración de bloques de tiempo y recomendación de ejercicios
+      description: Retorna la matriz de viabilidad temporal con los bloques de duración predefinidos (30, 45, 60, 75, 90, 120 min), sus límites de ejercicios y el valor recomendado por defecto (N).
+      operationId: getTimeBlockConfig
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Configuración de bloques de tiempo recuperada exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutineTimeBlockConfigResponse'
+        '401':
+          description: No autorizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -927,7 +1153,9 @@ components:
       enum:
         - active
         - completed
+        - cancelled
         - archived
+        - deload_skipped
       description: Estado actual del mesociclo.
 
     SwapReason:
@@ -1595,6 +1823,19 @@ components:
           type: integer
           minimum: 4
           maximum: 8
+        availableDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 4
+          description: Días disponibles de entrenamiento por semana (1 a 7).
+        sessionDurationMinutes:
+          type: integer
+          enum: [30, 45, 60, 75, 90, 120]
+          example: 60
+          description: Bloque predefinido de duración por sesión en minutos.
+        exercisesPerSessionPreference:
+          $ref: '#/components/schemas/ExercisesPerSessionPreference'
 
     SwapExerciseRequest:
       type: object
@@ -1814,3 +2055,365 @@ components:
           description: Lista de errores por campo
           items:
             $ref: '#/components/schemas/ErrorDetail'
+
+    WeightLogInput:
+      type: object
+      required:
+        - weightKg
+        - loggedDate
+      properties:
+        weightKg:
+          type: number
+          minimum: 30.0
+          maximum: 300.0
+          example: 74.5
+          description: Peso corporal del atleta en kilogramos (30 a 300 kg).
+        loggedDate:
+          type: string
+          format: date
+          example: "2026-09-14"
+          description: Fecha calendario asignada al pesaje (YYYY-MM-DD).
+
+    CreateWeightLogRequest:
+      type: object
+      required:
+        - weight_kg
+        - logged_date
+      properties:
+        weight_kg:
+          type: number
+          minimum: 30.0
+          maximum: 300.0
+          example: 74.5
+          description: Peso corporal del atleta en kilogramos (precisión de un decimal).
+        logged_date:
+          type: string
+          format: date
+          example: "2026-09-14"
+          description: Fecha calendario asignada al pesaje (YYYY-MM-DD).
+
+    UpdateWeightLogRequest:
+      type: object
+      required:
+        - weight_kg
+      properties:
+        weight_kg:
+          type: number
+          minimum: 30.0
+          maximum: 300.0
+          example: 74.2
+          description: Nuevo peso corporal en kg.
+        logged_date:
+          type: string
+          format: date
+          example: "2026-09-15"
+          description: Fecha reubicada dentro de la misma semana calendario (opcional).
+
+    WeightLogItem:
+      type: object
+      required:
+        - id
+        - athlete_id
+        - weight_kg
+        - calendar_week_start
+        - logged_date
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        athlete_id:
+          type: string
+          format: uuid
+        weight_kg:
+          type: number
+          example: 74.5
+        calendar_week_start:
+          type: string
+          format: date
+          example: "2026-09-14"
+        logged_date:
+          type: string
+          format: date
+          example: "2026-09-14"
+        delta_kg:
+          type:
+            - number
+            - "null"
+          example: -0.8
+          description: Variación en kg respecto al pesaje inmediatamente anterior (null si es el primer registro).
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    WeightLogResponse:
+      type: object
+      required:
+        - log
+      properties:
+        log:
+          $ref: '#/components/schemas/WeightLogItem'
+
+    WeightLogListResponse:
+      type: object
+      required:
+        - logs
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeightLogItem'
+
+    RoutineTimeBlockItem:
+      type: object
+      required:
+        - duration_minutes
+        - min_exercises
+        - max_exercises
+        - recommended_exercises
+      properties:
+        duration_minutes:
+          type: integer
+          enum: [30, 45, 60, 75, 90, 120]
+          example: 60
+          description: Duración del bloque de entrenamiento en minutos.
+        min_exercises:
+          type: integer
+          minimum: 2
+          maximum: 7
+          example: 2
+          description: Cantidad mínima de ejercicios viables para este bloque.
+        max_exercises:
+          type: integer
+          minimum: 2
+          maximum: 7
+          example: 5
+          description: Cantidad máxima de ejercicios viables dentro del bloque sin desbordar tiempo en semana pico.
+        recommended_exercises:
+          type: integer
+          minimum: 2
+          maximum: 7
+          example: 4
+          description: Cantidad recomendada por defecto (N ej/día) matemáticamente garantizada de ser viable.
+
+    RoutineTimeBlockConfigResponse:
+      type: object
+      required:
+        - available_blocks
+      properties:
+        available_blocks:
+          type: array
+          description: Matriz de viabilidad temporal y configuración de bloques de tiempo predefinidos.
+          items:
+            $ref: '#/components/schemas/RoutineTimeBlockItem'
+
+    RoutineTimeBlockConfig:
+      type: object
+      required:
+        - availableBlocks
+      properties:
+        availableBlocks:
+          type: array
+          description: Matriz de viabilidad temporal y configuración de bloques de tiempo predefinidos.
+          items:
+            $ref: '#/components/schemas/RoutineTimeBlockItem'
+
+    LoadType:
+      type: string
+      enum:
+        - bodyweight
+        - bodyweight_loadable
+        - assisted_bodyweight
+        - external_load
+      description: Taxonomía de carga biomecánica para el cálculo de 1RM y sobrecarga.
+
+    ExercisesPerSessionPreference:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          enum:
+            - manual
+            - recommended
+          example: recommended
+          description: Modo de selección de cantidad de ejercicios diarios.
+        customCount:
+          type:
+            - integer
+            - "null"
+          minimum: 2
+          maximum: 7
+          example: 4
+          description: Cantidad fija de ejercicios diarios (2 a 7) si mode = manual.
+
+    MesocycleCreateV2Input:
+      type: object
+      required:
+        - availableDays
+        - sessionDurationMinutes
+        - exercisesPerSessionPreference
+      properties:
+        availableDays:
+          type: integer
+          minimum: 1
+          maximum: 7
+          example: 4
+          description: Días disponibles de entrenamiento por semana (1 a 7).
+        sessionDurationMinutes:
+          type: integer
+          enum: [30, 45, 60, 75, 90, 120]
+          example: 60
+          description: Duración estándar de sesión en minutos.
+        exercisesPerSessionPreference:
+          $ref: '#/components/schemas/ExercisesPerSessionPreference'
+        targetGoal:
+          $ref: '#/components/schemas/TrainingGoal'
+        customDurationWeeks:
+          type: integer
+          minimum: 4
+          maximum: 8
+          example: 6
+
+    ExerciseBaselineSnapshot:
+      type: object
+      required:
+        - loadText
+        - e1rmKg
+      properties:
+        loadText:
+          type: string
+          example: "75.0 kg (PC) + 0 kg × 6 reps"
+          description: Representación textual legible de la carga de partida.
+        e1rmKg:
+          type: number
+          example: 87.2
+          description: 1RM estimado al inicio del mesociclo.
+
+    ExerciseFinalPerformance:
+      type: object
+      required:
+        - loadText
+        - e1rmKg
+        - executed
+      properties:
+        loadText:
+          type: string
+          example: "73.5 kg (PC) + 10 kg × 8 reps"
+          description: Carga de la mejor serie registrada en semana pico o previa a cierre.
+        e1rmKg:
+          type: number
+          example: 98.4
+          description: Máximo 1RM estimado alcanzado en el mesociclo.
+        executed:
+          type: boolean
+          example: true
+          description: Indica si el ejercicio llegó a ejecutarse en al menos una sesión.
+
+    ExerciseProgressionDelta:
+      type: object
+      required:
+        - deltaKg
+        - deltaPercent
+      properties:
+        deltaKg:
+          type: number
+          example: 11.2
+          description: Incremento neto de 1RM estimado en kg respecto a la línea base.
+        deltaPercent:
+          type: number
+          example: 12.8
+          description: Incremento porcentual de 1RM estimado.
+
+    ExerciseProgressionItem:
+      type: object
+      required:
+        - exerciseId
+        - exerciseName
+        - loadType
+        - baseline
+        - final
+      properties:
+        exerciseId:
+          type: string
+          example: pull_up
+        exerciseName:
+          type: string
+          example: Dominadas pronas
+        loadType:
+          $ref: '#/components/schemas/LoadType'
+        baseline:
+          $ref: '#/components/schemas/ExerciseBaselineSnapshot'
+        final:
+          $ref: '#/components/schemas/ExerciseFinalPerformance'
+        progress:
+          $ref: '#/components/schemas/ExerciseProgressionDelta'
+
+    MesocycleHistoryItem:
+      type: object
+      required:
+        - id
+        - name
+        - goal
+        - startDate
+        - status
+        - adherencePercent
+        - exerciseProgressions
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "b1c2d3e4-f5a6-7890-abcd-ef1234567890"
+        name:
+          type: string
+          example: "Mesociclo 1 - Hipertrofia V2"
+        goal:
+          type: string
+          example: "hipertrofia"
+        startDate:
+          type: string
+          format: date
+          example: "2026-08-01"
+        endDate:
+          type:
+            - string
+            - "null"
+          format: date
+          example: "2026-09-12"
+        status:
+          type: string
+          enum:
+            - completed
+            - deload_skipped
+            - cancelled
+          example: completed
+        adherencePercent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 92
+          description: Porcentaje de adherencia/cumplimiento según sesiones planificadas y ejecutadas.
+        adherenceDetails:
+          type: string
+          example: "Semana 6 de 6 completada (22 de 24 sesiones)"
+        exerciseProgressions:
+          type: array
+          description: Comparativas de marcas por ejercicio en formato de tarjetas verticales apiladas.
+          items:
+            $ref: '#/components/schemas/ExerciseProgressionItem'
+
+    MesocycleHistoryResponse:
+      type: object
+      required:
+        - mesocycles
+      properties:
+        mesocycles:
+          type: array
+          items:
+            $ref: '#/components/schemas/MesocycleHistoryItem'
+

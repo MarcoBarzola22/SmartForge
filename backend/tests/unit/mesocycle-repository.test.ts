@@ -171,7 +171,7 @@ describe('TASK-24: MesocycleRepository', () => {
       vi.mocked(mockPool.query).mockImplementation(async (sql: string) => {
         const normalized = sql.replace(/\s+/g, ' ').trim();
 
-        if (normalized.startsWith('SELECT id, athlete_id, name, experience_level, training_goal, periodization_type, duration_weeks, status, start_date, end_date FROM mesocycle')) {
+        if (normalized.startsWith('SELECT id, athlete_id, name') && normalized.includes('FROM mesocycle WHERE id = $1')) {
           return {
             rows: [
               {
@@ -273,7 +273,7 @@ describe('TASK-24: MesocycleRepository', () => {
             ]
           };
         }
-        if (normalized.startsWith('SELECT id, athlete_id, name, experience_level, training_goal, periodization_type, duration_weeks, status, start_date, end_date FROM mesocycle')) {
+        if (normalized.startsWith('SELECT id, athlete_id, name') && normalized.includes('FROM mesocycle WHERE id = $1')) {
           return {
             rows: [
               {

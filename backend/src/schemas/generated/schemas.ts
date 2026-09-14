@@ -13,7 +13,7 @@ export type TrainingGoal = z.infer<typeof TrainingGoalSchema>;
 export const PeriodizationTypeSchema = z.enum(['lineal', 'ondulante']);
 export type PeriodizationType = z.infer<typeof PeriodizationTypeSchema>;
 
-export const MesocycleStatusSchema = z.enum(['active', 'completed', 'archived']);
+export const MesocycleStatusSchema = z.enum(['active', 'completed', 'cancelled', 'archived', 'deload_skipped']);
 export type MesocycleStatus = z.infer<typeof MesocycleStatusSchema>;
 
 export const SwapReasonSchema = z.enum(['falta_equipamiento', 'preferencia_personal', 'molestia_articular']);
@@ -236,9 +236,18 @@ export const MesocycleDetailSchema = z.object({
 });
 export type MesocycleDetail = z.infer<typeof MesocycleDetailSchema>;
 
+export const ExercisesPerSessionPreferenceSchema = z.object({
+  mode: z.enum(['manual', 'recommended']),
+  customCount: z.number().int().min(2).max(7).nullable().optional()
+});
+export type ExercisesPerSessionPreference = z.infer<typeof ExercisesPerSessionPreferenceSchema>;
+
 export const GenerateMesocycleRequestSchema = z.object({
   target_goal: TrainingGoalSchema.optional(),
-  custom_duration_weeks: z.number().int().min(4).max(8).optional()
+  custom_duration_weeks: z.number().int().min(4).max(8).optional(),
+  availableDays: z.number().int().min(1).max(7).optional(),
+  sessionDurationMinutes: z.union([z.literal(30), z.literal(45), z.literal(60), z.literal(75), z.literal(90), z.literal(120)]).optional(),
+  exercisesPerSessionPreference: ExercisesPerSessionPreferenceSchema.optional()
 });
 export type GenerateMesocycleRequest = z.infer<typeof GenerateMesocycleRequestSchema>;
 
@@ -311,4 +320,121 @@ export const ValidationErrorResponseSchema = z.object({
   details: z.array(ErrorDetailSchema)
 });
 export type ValidationErrorResponse = z.infer<typeof ValidationErrorResponseSchema>;
+
+export const WeightLogInputSchema = z.object({
+  weightKg: z.number().min(30).max(300),
+  loggedDate: z.string()
+});
+export type WeightLogInput = z.infer<typeof WeightLogInputSchema>;
+
+export const CreateWeightLogRequestSchema = z.object({
+  weight_kg: z.number().min(30).max(300),
+  logged_date: z.string()
+});
+export type CreateWeightLogRequest = z.infer<typeof CreateWeightLogRequestSchema>;
+
+export const UpdateWeightLogRequestSchema = z.object({
+  weight_kg: z.number().min(30).max(300),
+  logged_date: z.string().optional()
+});
+export type UpdateWeightLogRequest = z.infer<typeof UpdateWeightLogRequestSchema>;
+
+export const WeightLogItemSchema = z.object({
+  id: z.string().uuid(),
+  athlete_id: z.string().uuid(),
+  weight_kg: z.number(),
+  calendar_week_start: z.string(),
+  logged_date: z.string(),
+  delta_kg: z.number().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string().optional()
+});
+export type WeightLogItem = z.infer<typeof WeightLogItemSchema>;
+
+export const WeightLogResponseSchema = z.object({
+  log: WeightLogItemSchema
+});
+export type WeightLogResponse = z.infer<typeof WeightLogResponseSchema>;
+
+export const WeightLogListResponseSchema = z.object({
+  logs: z.array(WeightLogItemSchema)
+});
+export type WeightLogListResponse = z.infer<typeof WeightLogListResponseSchema>;
+
+export const RoutineTimeBlockItemSchema = z.object({
+  duration_minutes: z.union([z.literal(30), z.literal(45), z.literal(60), z.literal(75), z.literal(90), z.literal(120)]),
+  min_exercises: z.number().int().min(2).max(7),
+  max_exercises: z.number().int().min(2).max(7),
+  recommended_exercises: z.number().int().min(2).max(7)
+});
+export type RoutineTimeBlockItem = z.infer<typeof RoutineTimeBlockItemSchema>;
+
+export const RoutineTimeBlockConfigResponseSchema = z.object({
+  available_blocks: z.array(RoutineTimeBlockItemSchema)
+});
+export type RoutineTimeBlockConfigResponse = z.infer<typeof RoutineTimeBlockConfigResponseSchema>;
+
+export const RoutineTimeBlockConfigSchema = z.object({
+  availableBlocks: z.array(RoutineTimeBlockItemSchema)
+});
+export type RoutineTimeBlockConfig = z.infer<typeof RoutineTimeBlockConfigSchema>;
+
+export const LoadTypeSchema = z.enum(['bodyweight', 'bodyweight_loadable', 'assisted_bodyweight', 'external_load']);
+export type LoadType = z.infer<typeof LoadTypeSchema>;
+
+export const MesocycleCreateV2InputSchema = z.object({
+  availableDays: z.number().int().min(1).max(7),
+  sessionDurationMinutes: z.union([z.literal(30), z.literal(45), z.literal(60), z.literal(75), z.literal(90), z.literal(120)]),
+  exercisesPerSessionPreference: ExercisesPerSessionPreferenceSchema,
+  targetGoal: TrainingGoalSchema.optional(),
+  customDurationWeeks: z.number().int().min(4).max(8).optional()
+});
+export type MesocycleCreateV2Input = z.infer<typeof MesocycleCreateV2InputSchema>;
+
+export const ExerciseBaselineSnapshotSchema = z.object({
+  loadText: z.string(),
+  e1rmKg: z.number()
+});
+export type ExerciseBaselineSnapshot = z.infer<typeof ExerciseBaselineSnapshotSchema>;
+
+export const ExerciseFinalPerformanceSchema = z.object({
+  loadText: z.string(),
+  e1rmKg: z.number(),
+  executed: z.boolean()
+});
+export type ExerciseFinalPerformance = z.infer<typeof ExerciseFinalPerformanceSchema>;
+
+export const ExerciseProgressionDeltaSchema = z.object({
+  deltaKg: z.number(),
+  deltaPercent: z.number()
+});
+export type ExerciseProgressionDelta = z.infer<typeof ExerciseProgressionDeltaSchema>;
+
+export const ExerciseProgressionItemSchema = z.object({
+  exerciseId: z.string(),
+  exerciseName: z.string(),
+  loadType: LoadTypeSchema,
+  baseline: ExerciseBaselineSnapshotSchema,
+  final: ExerciseFinalPerformanceSchema,
+  progress: ExerciseProgressionDeltaSchema.optional()
+});
+export type ExerciseProgressionItem = z.infer<typeof ExerciseProgressionItemSchema>;
+
+export const MesocycleHistoryItemSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  goal: z.string(),
+  startDate: z.string(),
+  endDate: z.string().nullable().optional(),
+  status: z.enum(['completed', 'deload_skipped', 'cancelled']),
+  adherencePercent: z.number().int().min(0).max(100),
+  adherenceDetails: z.string().optional(),
+  exerciseProgressions: z.array(ExerciseProgressionItemSchema)
+});
+export type MesocycleHistoryItem = z.infer<typeof MesocycleHistoryItemSchema>;
+
+export const MesocycleHistoryResponseSchema = z.object({
+  mesocycles: z.array(MesocycleHistoryItemSchema)
+});
+export type MesocycleHistoryResponse = z.infer<typeof MesocycleHistoryResponseSchema>;
 
