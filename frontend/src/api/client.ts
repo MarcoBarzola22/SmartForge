@@ -18,7 +18,17 @@ import type {
   PainReport,
   ProgressionSuggestion,
   SyncRequest,
-  SyncResponse
+  SyncResponse,
+  WeightLogItem,
+  WeightLogResponse,
+  WeightLogListResponse,
+  CreateWeightLogRequest,
+  UpdateWeightLogRequest,
+  RoutineTimeBlockItem,
+  RoutineTimeBlockConfigResponse,
+  MesocycleHistoryItem,
+  MesocycleHistoryResponse,
+  CancelActiveMesocycleResponse
 } from './generated/types';
 
 let authToken: string | null = null;
@@ -131,6 +141,51 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
+export async function fetchWeightLogs(): Promise<WeightLogItem[]> {
+  const res = await request<WeightLogListResponse | WeightLogItem[]>('/athletes/me/weight-logs');
+  return Array.isArray(res) ? res : res.logs;
+}
+
+export async function createWeightLog(data: CreateWeightLogRequest): Promise<WeightLogItem> {
+  const res = await request<WeightLogResponse | WeightLogItem>('/athletes/me/weight-logs', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+  return (res as WeightLogResponse).log ?? (res as WeightLogItem);
+}
+
+export async function updateWeightLog(id: string, data: UpdateWeightLogRequest): Promise<WeightLogItem> {
+  const res = await request<WeightLogResponse | WeightLogItem>(`/athletes/me/weight-logs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  });
+  return (res as WeightLogResponse).log ?? (res as WeightLogItem);
+}
+
+export async function fetchTimeBlockConfig(): Promise<RoutineTimeBlockItem[]> {
+  const res = await request<RoutineTimeBlockConfigResponse | RoutineTimeBlockItem[]>('/routines/config/time-blocks');
+  return Array.isArray(res) ? res : res.available_blocks;
+}
+
+export async function createMesocycleV2(data: GenerateMesocycleRequest): Promise<MesocycleDetail> {
+  return request<MesocycleDetail>('/mesocycles', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+}
+
+export async function cancelActiveMesocycle(reason?: string): Promise<CancelActiveMesocycleResponse> {
+  return request<CancelActiveMesocycleResponse>('/mesocycles/active/cancel', {
+    method: 'POST',
+    body: JSON.stringify(reason !== undefined ? { reason } : {})
+  });
+}
+
+export async function fetchMesocycleHistory(): Promise<MesocycleHistoryItem[]> {
+  const res = await request<MesocycleHistoryResponse | MesocycleHistoryItem[]>('/mesocycles/history');
+  return Array.isArray(res) ? res : res.mesocycles;
+}
+
 export const apiClient = {
   auth: {
     getMe: () => request<AthleteProfile>('/auth/me')
@@ -154,6 +209,16 @@ export const apiClient = {
       })
   },
 
+  weightLogs: {
+    list: fetchWeightLogs,
+    create: createWeightLog,
+    update: updateWeightLog
+  },
+
+  routineConfig: {
+    getTimeBlocks: fetchTimeBlockConfig
+  },
+
   mesocycles: {
     getCurrent: () => request<MesocycleDetail>('/mesocycles/current'),
     getById: (id: string) => request<MesocycleDetail>(`/mesocycles/${id}`),
@@ -162,6 +227,9 @@ export const apiClient = {
         method: 'POST',
         body: JSON.stringify(data)
       }),
+    createV2: createMesocycleV2,
+    cancelActive: cancelActiveMesocycle,
+    getHistory: fetchMesocycleHistory,
     rotate: (id: string) =>
       request<MesocycleDetail>(`/mesocycles/${id}/rotate`, {
         method: 'POST'

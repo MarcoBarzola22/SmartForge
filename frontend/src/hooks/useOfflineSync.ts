@@ -58,15 +58,20 @@ export function useOfflineSync(): UseOfflineSyncReturn {
     setSyncStatus('syncing');
 
     try {
+      // 1. Process pending mesocycle cancellations if any (RF-07, RNF-05)
+      const cancellationResult = await offlineStore.syncPendingCancellations();
+
       const queue = await offlineStore.getPendingSyncQueue();
       if (queue.length === 0) {
+        await refreshPendingCount();
         setIsSyncing(false);
         setSyncStatus('synced');
+        setLastSyncedAt(new Date());
         return {
-          success: true,
-          processed: 0,
+          success: cancellationResult.errors.length === 0,
+          processed: cancellationResult.syncedCount,
           conflicts: 0,
-          errors: []
+          errors: cancellationResult.errors
         };
       }
 

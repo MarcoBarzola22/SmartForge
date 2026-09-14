@@ -178,6 +178,35 @@ export class SetLogRepository {
   }
 
   /**
+   * Obtiene las series completadas de un ejercicio en los últimos N días con su load_type resuelto (RF-05 CA-05.2).
+   */
+  async findRecentSetsForExercise(
+    athleteId: string,
+    exerciseId: string,
+    sinceDate: Date
+  ): Promise<Array<SetLogRecord & { load_type?: string }>> {
+    const sql = `
+      SELECT sl.id, sl.session_id, sl.exercise_id, sl.exercise_assignment_id, sl.set_number,
+             sl.reps_completed, sl.weight_kg, sl.rir, sl.client_timestamp, sl.created_at, sl.updated_at,
+             COALESCE(sl.load_type, e.load_type, 'external_load') AS load_type
+      FROM set_log sl
+      JOIN session s ON sl.session_id = s.id
+      JOIN exercise e ON sl.exercise_id = e.id
+      WHERE s.athlete_id = $1
+        AND sl.exercise_id = $2
+        AND s.deleted_at IS NULL
+        AND sl.created_at >= $3
+      ORDER BY sl.created_at DESC;
+    `;
+
+    const res = await this.dbPool.query(sql, [athleteId, exerciseId, sinceDate.toISOString()]);
+    return ((res.rows || []) as Record<string, unknown>[]).map((row) => ({
+      ...this.mapRowToSetLog(row),
+      load_type: String(row.load_type || 'external_load')
+    }));
+  }
+
+  /**
    * Actualiza los datos de una serie registrada (reps, peso, RIR).
    */
   async update(id: string, data: UpdateSetLogData): Promise<SetLogRecord | null> {

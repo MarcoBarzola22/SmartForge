@@ -10,6 +10,8 @@ import { sessionRoutes } from './routes/session.routes.js';
 import { setRoutes } from './routes/set.routes.js';
 import { progressionRoutes } from './routes/progression.routes.js';
 import { syncRoutes } from './routes/sync.routes.js';
+import { bodyWeightRoutes } from './routes/body-weight.routes.js';
+import { routineConfigRoutes } from './routes/routine-config.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -47,6 +49,12 @@ export function createApp(): Express {
 
   app.use('/api/sync', syncRoutes);
   app.use('/sync', syncRoutes);
+
+  app.use('/api/athletes/me/weight-logs', bodyWeightRoutes);
+  app.use('/athletes/me/weight-logs', bodyWeightRoutes);
+
+  app.use('/api/routines', routineConfigRoutes);
+  app.use('/routines', routineConfigRoutes);
 
   app.use(errorHandler);
 

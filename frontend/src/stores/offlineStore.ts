@@ -1,4 +1,5 @@
-import type { TrainingSession, SessionPlan } from '../api';
+import type { TrainingSession, SessionPlan, MesocycleDetail } from '../api';
+import { cancelActiveMesocycle } from '../api';
 
 /**
  * Offline Store using IndexedDB for SmartForge PWA (RNF-03, DT-04).
@@ -73,11 +74,17 @@ export interface LocalPainReport {
   synced: boolean;
 }
 
+export interface MesocycleCancellationPayload {
+  mesocycleId?: string;
+  reason?: string;
+  cancelledAt: string;
+}
+
 export interface SyncQueueItem {
   id: string;
   sequenceNumber?: number;
-  entityType: 'session' | 'checkin' | 'set_log' | 'pain_report';
-  action: 'create' | 'update' | 'delete';
+  entityType: 'session' | 'checkin' | 'set_log' | 'pain_report' | 'mesocycle_cancellation' | 'mesocycle';
+  action: 'create' | 'update' | 'delete' | 'cancel';
   payload: unknown;
   clientTimestamp: string;
   createdAt: string;
@@ -500,11 +507,243 @@ class OfflineStore {
     }
   }
 
+  // --- Active Mesocycle Persistence (RF-07) ---
+  async saveActiveMesocycle(mesocycle: MesocycleDetail): Promise<void> {
+    try {
+      localStorage.setItem('smartforge_active_mesocycle', JSON.stringify(mesocycle));
+    } catch (e) {
+      console.warn('Could not save active mesocycle to localStorage', e);
+    }
+
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const db = await this.getDB();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('routine', 'readwrite');
+          const store = tx.objectStore('routine');
+          store.put({
+            id: 'active_mesocycle',
+            mesocycle
+          });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (e) {
+        console.warn('Could not save active mesocycle to IndexedDB', e);
+      }
+    }
+  }
+
+  async getActiveMesocycle(): Promise<MesocycleDetail | null> {
+    try {
+      const cached = localStorage.getItem('smartforge_active_mesocycle');
+      if (cached) {
+        return JSON.parse(cached) as MesocycleDetail;
+      }
+    } catch (e) {
+      console.warn('Could not read active mesocycle from localStorage', e);
+    }
+
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const db = await this.getDB();
+        return await new Promise<MesocycleDetail | null>((resolve, reject) => {
+          const tx = db.transaction('routine', 'readonly');
+          const store = tx.objectStore('routine');
+          const req = store.get('active_mesocycle');
+          req.onsuccess = () => {
+            if (req.result && req.result.mesocycle) {
+              resolve(req.result.mesocycle as MesocycleDetail);
+            } else {
+              resolve(null);
+            }
+          };
+          req.onerror = () => reject(req.error);
+        });
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  // --- Offline Mesocycle Cancellation & Deterministic Reconciliation (RF-07, RNF-05) ---
+  async cancelActiveMesocycleLocally(reason?: string): Promise<{
+    status: 'cancelled';
+    message: string;
+    cancelledLocally: boolean;
+    cancelledAt: string;
+  }> {
+    const cancelledAt = new Date().toISOString();
+    const activeMeso = await this.getActiveMesocycle();
+
+    // 1. Finalize in-progress session if any (CA-07.6)
+    await this.clearActiveSession();
+
+    // 2. Mark remaining future/pending sessions as cancelled in local store (CA-07.7)
+    if (typeof indexedDB !== 'undefined') {
+      try {
+        const db = await this.getDB();
+        await new Promise<void>((resolve, reject) => {
+          const tx = db.transaction('sessions', 'readwrite');
+          const store = tx.objectStore('sessions');
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const list = (req.result as LocalSession[]) || [];
+            list.forEach((s) => {
+              if (s.status === 'in_progress') {
+                s.status = 'completed';
+                store.put(s);
+              } else if (s.status === 'pending') {
+                s.status = 'cancelled' as any;
+                store.put(s);
+              }
+            });
+            resolve();
+          };
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.warn('Could not update local sessions upon cancellation', e);
+      }
+    }
+
+    // 3. Update active mesocycle state to cancelled
+    if (activeMeso) {
+      activeMeso.status = 'cancelled';
+      (activeMeso as any).cancelled_at = cancelledAt;
+      await this.saveActiveMesocycle(activeMeso);
+    } else {
+      try {
+        localStorage.setItem(
+          'smartforge_active_mesocycle',
+          JSON.stringify({ status: 'cancelled', cancelled_at: cancelledAt })
+        );
+      } catch {}
+    }
+
+    // 4. Enqueue idempotent mutation in sync_queue (CA-07.4)
+    const payload: MesocycleCancellationPayload = {
+      mesocycleId: activeMeso?.id,
+      reason,
+      cancelledAt
+    };
+
+    await this.enqueueSync({
+      entityType: 'mesocycle_cancellation',
+      action: 'cancel',
+      payload,
+      clientTimestamp: cancelledAt
+    });
+
+    return {
+      status: 'cancelled',
+      message: 'Cancelado localmente. Se sincronizará con el servidor al recuperar conexión',
+      cancelledLocally: true,
+      cancelledAt
+    };
+  }
+
+  async reconcileMesocycleCancellation(serverResponse: {
+    status: 'cancelled' | 'completed' | 'deload_skipped';
+    message?: string;
+    cancelled_at?: string | null;
+  }): Promise<{ finalStatus: string; reconciled: boolean }> {
+    const activeMeso = await this.getActiveMesocycle();
+    const targetStatus = serverResponse.status;
+
+    if (activeMeso) {
+      activeMeso.status = targetStatus;
+      if (serverResponse.cancelled_at) {
+        (activeMeso as any).cancelled_at = serverResponse.cancelled_at;
+      }
+      await this.saveActiveMesocycle(activeMeso);
+    } else {
+      try {
+        localStorage.setItem(
+          'smartforge_active_mesocycle',
+          JSON.stringify({ status: targetStatus, cancelled_at: serverResponse.cancelled_at })
+        );
+      } catch {}
+    }
+
+    return {
+      finalStatus: targetStatus,
+      reconciled: true
+    };
+  }
+
+  async syncPendingCancellations(
+    cancelApiFn: (reason?: string) => Promise<{
+      status: 'cancelled' | 'completed' | 'deload_skipped';
+      message?: string;
+      cancelled_at?: string | null;
+    }> = cancelActiveMesocycle
+  ): Promise<{ syncedCount: number; errors: string[] }> {
+    const queue = await this.getPendingSyncQueue();
+    const cancellationItems = queue.filter(
+      (item) =>
+        item.entityType === 'mesocycle_cancellation' ||
+        (item.entityType === 'mesocycle' && item.action === 'cancel')
+    );
+
+    let syncedCount = 0;
+    const errors: string[] = [];
+
+    for (const item of cancellationItems) {
+      try {
+        const payload = item.payload as MesocycleCancellationPayload | undefined;
+        const res = await cancelApiFn(payload?.reason);
+
+        // Reconcile deterministic server response
+        await this.reconcileMesocycleCancellation(res);
+
+        // Mark processed
+        await this.markSyncItemProcessed(item.id);
+        syncedCount += 1;
+      } catch (err: any) {
+        const isNotFound =
+          err?.status === 404 ||
+          err?.statusCode === 404 ||
+          err?.message?.includes('404') ||
+          err?.code === 'NOT_FOUND';
+
+        if (isNotFound) {
+          // Idempotent clean removal
+          await this.markSyncItemProcessed(item.id);
+          syncedCount += 1;
+        } else {
+          item.attempts = (item.attempts || 0) + 1;
+          if (typeof indexedDB !== 'undefined') {
+            try {
+              const db = await this.getDB();
+              await new Promise<void>((resolve, reject) => {
+                const tx = db.transaction('sync_queue', 'readwrite');
+                const store = tx.objectStore('sync_queue');
+                store.put(item);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+              });
+            } catch {
+              // ignore
+            }
+          }
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push(msg);
+        }
+      }
+    }
+
+    return { syncedCount, errors };
+  }
+
   // --- Reset / Purge ---
   async clearAllOfflineData(): Promise<void> {
     try {
       localStorage.removeItem('smartforge_active_session');
       localStorage.removeItem('smartforge_active_session_plan');
+      localStorage.removeItem('smartforge_active_mesocycle');
     } catch {
       // ignore
     }
@@ -522,3 +761,4 @@ class OfflineStore {
 }
 
 export const offlineStore = new OfflineStore();
+export { OfflineStore };

@@ -95,23 +95,23 @@
   - **RF**: RF-03, RF-04
   - **Hecho cuando**: El servicio calcula la duración de la sesión en la semana pico sumando calentamiento, ejecución bilateral/unilateral (factor 1.8×) y descansos fisiológicos (≥60s monoarticular, ≥120s compuesto), bloqueando selecciones inviables con detalle pedagógico.
 
-- [ ] **TASK-16**: Implementar Dosis Mínima Efectiva (DME) y regla jerárquica de poda para techo de 24 series en `routine-engine-v2.service.ts`.
+- [x] **TASK-16**: Implementar Dosis Mínima Efectiva (DME) y regla jerárquica de poda para techo de 24 series en `routine-engine-v2.service.ts`.
   - **RF**: RF-04
   - **Hecho cuando**: Ante tiempo reducido se ajustan series a DME (6–8 series); ante selecciones de alto volumen se podan series de monoarticulares y luego accesorios secundarios sin reducir los compuestos principales por debajo de 3 series ni superar 24 series semanales.
 
-- [ ] **TASK-17**: Implementar `baseline-snapshot.service.ts` con desempate de e1RM y normalización de RIR submáximo.
+- [x] **TASK-17**: Implementar `baseline-snapshot.service.ts` con desempate de e1RM y normalización de RIR submáximo.
   - **RF**: RF-05
   - **Hecho cuando**: El servicio genera el snapshot inmutable seleccionando la serie con mayor e1RM (desempatando por kg) para RIR ≤ 3, normaliza a RIR 2 series con RIR 4–5 y utiliza ratios de catálogo como fallback cuando no hay datos en 90 días.
 
-- [ ] **TASK-18**: Implementar `mesocycle-history.service.ts` con modelo híbrido Brzycki/Wathan y taxonomía de cargas.
+- [x] **TASK-18**: Implementar `mesocycle-history.service.ts` con modelo híbrido Brzycki/Wathan y taxonomía de cargas.
   - **RF**: RF-06
   - **Hecho cuando**: El servicio calcula el 1RM est. con Brzycki (≤10 reps) y Wathan (11–30 reps, saturando en >30), computa la masa neta para calisténicos asistidos con piso de 1.0 kg y calcula la adherencia proporcional para sesiones parciales (< 50% de series).
 
-- [ ] **TASK-19**: Implementar `mesocycle-lifecycle.service.ts` para cancelación controlada y preservación de datos.
+- [x] **TASK-19**: Implementar `mesocycle-lifecycle.service.ts` para cancelación controlada y preservación de datos.
   - **RF**: RF-07
   - **Hecho cuando**: La anulación del ciclo finaliza la sesión en curso si existiera, cancela las sesiones futuras sin `DELETE` físico, descarta del historial ciclos con 0 sesiones y clasifica como `Completado (Descarga omitida)` las anulaciones durante el deload con sobrecarga completa.
 
-- [ ] **TASK-20**: Implementar reglas de preservación de cargas básicas, rotación del 50% y descarga temprana en `mesocycle-lifecycle.service.ts`.
+- [x] **TASK-20**: Implementar reglas de preservación de cargas básicas, rotación del 50% y descarga temprana en `mesocycle-lifecycle.service.ts`.
   - **RF**: RF-08
   - **Hecho cuando**: Los nuevos mesociclos preservan la carga acumulada en sentadilla/banca/peso muerto del ciclo cancelado, aplican la regla del 50% de avance para rotar accesorios y programan descarga en la semana 3 si se canceló con ≥ 4 semanas consecutivas previas.
 
@@ -119,15 +119,15 @@
 
 ## Fase 5: Backend — Controladores, rutas y middlewares
 
-- [ ] **TASK-21**: Implementar `body-weight.controller.ts` y registrar `body-weight.routes.ts`.
+- [x] **TASK-21**: Implementar `body-weight.controller.ts` y registrar `body-weight.routes.ts`.
   - **RF**: RF-01, RF-02, Constitución Art. 3
   - **Hecho cuando**: Las rutas HTTP `/athletes/me/weight-logs` validan el input con esquemas Zod, invocan `body-weight.service.ts` y retornan códigos HTTP estándar (200, 201, 400, 409).
 
-- [ ] **TASK-22**: Implementar `routine-config.controller.ts` y registrar `routine-config.routes.ts`.
+- [x] **TASK-22**: Implementar `routine-config.controller.ts` y registrar `routine-config.routes.ts`.
   - **RF**: RF-03, RF-04, Constitución Art. 3
   - **Hecho cuando**: La ruta `GET /routines/config/time-blocks` devuelve la matriz de viabilidad y recomendación de ejercicios *N* según la lógica centralizada del backend.
 
-- [ ] **TASK-23**: Actualizar `mesocycle.controller.ts` y `mesocycle.routes.ts` para soportar generación V2, cancelación e historial.
+- [x] **TASK-23**: Actualizar `mesocycle.controller.ts` y `mesocycle.routes.ts` para soportar generación V2, cancelación e historial.
   - **RF**: RF-03, RF-05, RF-06, RF-07, RF-08, RF-09, Constitución Art. 3
   - **Hecho cuando**: Las rutas manejan la creación de ciclo V2, cancelación del ciclo activo, consulta del historial de tarjetas y el aviso pedagógico al intentar modificar disponibilidad a mitad de ciclo.
 
@@ -135,23 +135,23 @@
 
 ## Fase 6: Backend — Tests unitarios y de contrato
 
-- [ ] **TASK-24**: Crear test unitario `body-weight.service.test.ts`.
+- [x] **TASK-24**: Crear test unitario `body-weight.service.test.ts`.
   - **RF**: RF-01, RF-02, Constitución Art. 4
   - **Hecho cuando**: La suite cubre validación de rango (30–300 kg), colisión en la misma semana, rechazo por intervalo < 120 h e inmutabilidad de registros calisténicos pasados, pasando al 100%.
 
-- [ ] **TASK-25**: Crear test unitario `routine-engine-v2.service.test.ts`.
+- [x] **TASK-25**: Crear test unitario `routine-engine-v2.service.test.ts`.
   - **RF**: RF-03, RF-04, Constitución Art. 4
   - **Hecho cuando**: La suite cubre el cálculo de viabilidad con factor unilateral 1.8×, el bloqueo por déficit de tiempo, la opción recomendada viable y la poda jerárquica ante el techo de 24 series.
 
-- [ ] **TASK-26**: Crear tests unitarios `baseline-snapshot.service.test.ts` y `mesocycle-history.service.test.ts`.
+- [x] **TASK-26**: Crear tests unitarios `baseline-snapshot.service.test.ts` y `mesocycle-history.service.test.ts`.
   - **RF**: RF-05, RF-06, Constitución Art. 4
   - **Hecho cuando**: Las suites verifican la captura inmutable del snapshot, desempate de e1RM, cálculo híbrido Brzycki/Wathan, piso de 1.0 kg en calisténicos asistidos y adherencia proporcional en sesiones incompletas.
 
-- [ ] **TASK-27**: Crear test unitario `mesocycle-lifecycle.service.test.ts`.
+- [x] **TASK-27**: Crear test unitario `mesocycle-lifecycle.service.test.ts`.
   - **RF**: RF-07, RF-08, Constitución Art. 4
   - **Hecho cuando**: La suite verifica la cancelación con sesiones pendientes en estado `cancelled`, clasificación de descarga omitida, preservación de sobrecarga en compuestos principales y descarga temprana por fatiga acumulada.
 
-- [ ] **TASK-28**: Crear tests de contrato OpenAPI `body-weight.contract.test.ts` y `mesocycle-v2.contract.test.ts`.
+- [x] **TASK-28**: Crear tests de contrato OpenAPI `body-weight.contract.test.ts` y `mesocycle-v2.contract.test.ts`.
   - **RF**: Constitución Art. 1, Art. 4
   - **Hecho cuando**: Todos los endpoints de peso corporal, configuración V2, cancelación e historial validan sus payloads de entrada y respuesta contra los esquemas Zod derivados de `openapi.yaml`.
 
@@ -159,15 +159,15 @@
 
 ## Fase 7: Frontend — Clientes API y almacenes locales
 
-- [ ] **TASK-29**: Implementar métodos cliente en `frontend/src/api/` para peso corporal, configuración V2 y mesociclos.
+- [x] **TASK-29**: Implementar métodos cliente en `frontend/src/api/` para peso corporal, configuración V2 y mesociclos.
   - **RF**: RF-01, RF-02, RF-03, RF-06, RF-07, Constitución Art. 1
   - **Hecho cuando**: El frontend cuenta con funciones fuertemente tipadas `fetchWeightLogs()`, `createWeightLog()`, `fetchTimeBlockConfig()`, `createMesocycleV2()`, `cancelActiveMesocycle()` y `fetchMesocycleHistory()`.
 
-- [ ] **TASK-30**: Implementar `routineConfig.store.ts` para caché y cálculo reactivo de ejercicios recomendados.
+- [x] **TASK-30**: Implementar `routineConfig.store.ts` para caché y cálculo reactivo de ejercicios recomendados.
   - **RF**: RF-03, RF-04
   - **Hecho cuando**: El store almacena la matriz de bloques de tiempo y recalcula instantáneamente en tiempo real el valor de *N* al cambiar el bloque seleccionado en el cliente.
 
-- [ ] **TASK-31**: Actualizar `offlineSync.store.ts` para soportar cancelación offline en IndexedDB con reconciliación determinista.
+- [x] **TASK-31**: Actualizar `offlineSync.store.ts` para soportar cancelación offline en IndexedDB con reconciliación determinista.
   - **RF**: RF-07, RNF-05
   - **Hecho cuando**: Si se cancela el ciclo sin red, se actualiza el estado local a `cancelled`, se guarda la mutación en IndexedDB y se sincroniza idempotentemente al recuperar conexión.
 
@@ -175,7 +175,7 @@
 
 ## Fase 8: Frontend — Componentes UI ergonómicos (Mobile-First ≤ 390px)
 
-- [ ] **TASK-32**: Implementar `WeightLogModal.tsx` para registro y edición semanal de peso.
+- [x] **TASK-32**: Implementar `WeightLogModal.tsx` para registro y edición semanal de peso.
   - **RF**: RF-01, RF-02, Constitución Art. 2, Art. 6
   - **Hecho cuando**: El modal se ubica en la mitad inferior de la pantalla (operable con una mano en ≤390px), posee botones ≥ 48px, valida rangos numéricos y muestra la advertencia contextual al editar datos históricos.
 

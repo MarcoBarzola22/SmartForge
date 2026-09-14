@@ -19,6 +19,36 @@ mesocycleRoutes.get(
   mesocycleController.getCurrent
 );
 
+mesocycleRoutes.post(
+  '/active/cancel',
+  authenticate,
+  mesocycleController.cancelActive
+);
+
+mesocycleRoutes.get(
+  '/active/availability-warning',
+  authenticate,
+  mesocycleController.getAvailabilityWarning
+);
+
+mesocycleRoutes.post(
+  '/check-availability',
+  authenticate,
+  mesocycleController.getAvailabilityWarning
+);
+
+mesocycleRoutes.put(
+  '/active/availability',
+  authenticate,
+  mesocycleController.updateAvailability
+);
+
+mesocycleRoutes.get(
+  '/history',
+  authenticate,
+  mesocycleController.getHistory
+);
+
 mesocycleRoutes.get(
   '/:id',
   authenticate,

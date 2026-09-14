@@ -373,3 +373,13 @@ export type MesocycleHistoryResponse = {
   mesocycles: MesocycleHistoryItem[];
 };
 
+export type CancelActiveMesocycleRequest = {
+  reason?: string;
+};
+
+export type CancelActiveMesocycleResponse = {
+  status: 'cancelled' | 'completed' | 'deload_skipped';
+  message: string;
+  cancelled_at?: string | null;
+};
+

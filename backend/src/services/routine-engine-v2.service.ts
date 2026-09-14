@@ -11,6 +11,15 @@ export const COMPOUND_REST_SECONDS = 150; // >= 120s
 export const ISOLATION_REST_SECONDS = 75; // >= 60s
 export const TRANSITION_TIME_SECONDS = 90; // 1.5 min por ejercicio
 
+export const MAX_SAFE_SETS = 24;
+export const DME_MIN_SETS = 6;
+export const DME_MAX_SETS = 8;
+export const DME_NOTE = 'Rutina optimizada para tiempo reducido (Dosis mínima efectiva)';
+export const PRUNING_NOTE = 'Volumen ajustado jerárquicamente al techo seguro (24 series/músculo/semana)';
+export const PRIMARY_COMPOUND_MIN_SETS = 3;
+export const SECONDARY_COMPOUND_MIN_SETS = 2;
+export const ISOLATION_MIN_SETS = 2;
+
 export const ROUTINE_TIME_BLOCKS: RoutineTimeBlockItem[] = [
   { duration_minutes: 30, min_exercises: 2, max_exercises: 3, recommended_exercises: 2 },
   { duration_minutes: 45, min_exercises: 2, max_exercises: 4, recommended_exercises: 3 },
@@ -34,6 +43,21 @@ export interface ExercisePlannedInput {
   movement_pattern?: MovementPattern;
 }
 
+export interface PlannedExerciseWithSets extends ExercisePlannedInput {
+  targetSets: number;
+  targetRir?: number;
+  is_primary_compound?: boolean;
+  isPrimaryCompound?: boolean;
+  is_secondary_compound?: boolean;
+  isSecondaryCompound?: boolean;
+}
+
+export interface PlannedSession {
+  dayNumber?: number;
+  name?: string;
+  exercises: PlannedExerciseWithSets[];
+}
+
 export interface FeasibilityResult {
   isFeasible: boolean;
   estimatedMinutes: number;
@@ -49,6 +73,33 @@ export interface SwapFeasibilityResult {
   setsReduced: boolean;
   adjustedCandidateSets?: number;
   message?: string;
+}
+
+export interface PruningResult {
+  weeklyPlan: PlannedSession[];
+  wasPruned: boolean;
+  originalSets: number;
+  finalSets: number;
+  note?: string;
+}
+
+export interface AllMusclesPruningResult {
+  weeklyPlan: PlannedSession[];
+  wasPruned: boolean;
+  prunedMuscles: MuscleGroup[];
+  note?: string;
+}
+
+export interface DmeOptions {
+  durationMinutes: number;
+  availableDays: number;
+}
+
+export interface DmeResult {
+  weeklyPlan: PlannedSession[];
+  isDmeActive: boolean;
+  targetRirRange?: [number, number];
+  note?: string;
 }
 
 /**
@@ -75,6 +126,43 @@ export function isUnilateralExercise(exercise: {
     textToScan.includes('a 1 mano') ||
     textToScan.includes('a 1 pierna') ||
     textToScan.includes('pistol')
+  );
+}
+
+/**
+ * Detecta si un ejercicio compuesto califica como ejercicio compuesto principal (básico).
+ */
+export function isPrimaryCompoundExercise(exercise: PlannedExerciseWithSets | ExercisePlannedInput): boolean {
+  if (typeof (exercise as PlannedExerciseWithSets).is_primary_compound === 'boolean') {
+    return (exercise as PlannedExerciseWithSets).is_primary_compound!;
+  }
+  if (typeof (exercise as PlannedExerciseWithSets).isPrimaryCompound === 'boolean') {
+    return (exercise as PlannedExerciseWithSets).isPrimaryCompound!;
+  }
+  if (
+    (exercise as PlannedExerciseWithSets).is_secondary_compound === true ||
+    (exercise as PlannedExerciseWithSets).isSecondaryCompound === true
+  ) {
+    return false;
+  }
+
+  const isComp = exercise.is_compound ?? exercise.isCompound ?? false;
+  if (!isComp) {
+    return false;
+  }
+
+  const textToScan = `${exercise.id || ''} ${exercise.name || ''}`.toLowerCase();
+  return (
+    textToScan.includes('press_banca') ||
+    textToScan.includes('bench_press') ||
+    textToScan.includes('sentadilla') ||
+    textToScan.includes('squat') ||
+    textToScan.includes('peso_muerto') ||
+    textToScan.includes('deadlift') ||
+    textToScan.includes('press_militar') ||
+    textToScan.includes('overhead_press') ||
+    textToScan.includes('pull_up') ||
+    textToScan.includes('dominadas')
   );
 }
 
@@ -260,6 +348,238 @@ export class RoutineEngineV2Service {
       canSwap: false,
       setsReduced: false,
       message: `La variante seleccionada excede el tiempo disponible. Te sugerimos mantener una alternativa bilateral o ampliar el bloque de tiempo a ${suggestedMinutes} min.`
+    };
+  }
+
+  /**
+   * Calcula el volumen total semanal (series) planificado para un grupo muscular determinado.
+   */
+  calculateWeeklySetsForMuscle(weeklyPlan: PlannedSession[], muscle: MuscleGroup): number {
+    let total = 0;
+    for (const session of weeklyPlan) {
+      for (const ex of session.exercises) {
+        if (ex.muscle === muscle) {
+          total += ex.targetSets;
+        }
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Aplica la regla jerárquica de poda para evitar superar el techo de 24 series/músculo/semana (RF-04 CA-04.6):
+   * 1. Preserva intactas las series de los ejercicios compuestos principales (piso mínimo de 3 series).
+   * 2. Poda primero series de ejercicios monoarticulares / aislamiento hasta el techo o piso de 2 series.
+   * 3. Poda después series de accesorios compuestos secundarios hasta estabilizar en 24 series o piso de 2.
+   */
+  applyHierarchicalPruning(weeklyPlan: PlannedSession[], targetMuscleGroup: MuscleGroup): PruningResult {
+    const clonedPlan: PlannedSession[] = weeklyPlan.map((session) => ({
+      ...session,
+      exercises: session.exercises.map((ex) => ({ ...ex }))
+    }));
+
+    const originalSets = this.calculateWeeklySetsForMuscle(clonedPlan, targetMuscleGroup);
+    if (originalSets <= MAX_SAFE_SETS) {
+      return {
+        weeklyPlan: clonedPlan,
+        wasPruned: false,
+        originalSets,
+        finalSets: originalSets
+      };
+    }
+
+    let currentSets = originalSets;
+
+    // PASO 1: Podar ejercicios monoarticulares / aislamiento (hasta piso de 2 series)
+    while (currentSets > MAX_SAFE_SETS) {
+      let reducedInPass = false;
+      for (const session of clonedPlan) {
+        for (const ex of session.exercises) {
+          const isComp = ex.is_compound ?? ex.isCompound ?? false;
+          if (ex.muscle === targetMuscleGroup && !isComp && ex.targetSets > ISOLATION_MIN_SETS) {
+            ex.targetSets -= 1;
+            currentSets -= 1;
+            reducedInPass = true;
+            if (currentSets === MAX_SAFE_SETS) break;
+          }
+        }
+        if (currentSets === MAX_SAFE_SETS) break;
+      }
+      if (!reducedInPass) break;
+    }
+
+    // PASO 2: Podar accesorios compuestos secundarios si persiste el exceso (hasta piso de 2 series)
+    if (currentSets > MAX_SAFE_SETS) {
+      while (currentSets > MAX_SAFE_SETS) {
+        let reducedInPass = false;
+        for (const session of clonedPlan) {
+          for (const ex of session.exercises) {
+            const isComp = ex.is_compound ?? ex.isCompound ?? false;
+            const isPri = isPrimaryCompoundExercise(ex);
+            if (
+              ex.muscle === targetMuscleGroup &&
+              isComp &&
+              !isPri &&
+              ex.targetSets > SECONDARY_COMPOUND_MIN_SETS
+            ) {
+              ex.targetSets -= 1;
+              currentSets -= 1;
+              reducedInPass = true;
+              if (currentSets === MAX_SAFE_SETS) break;
+            }
+          }
+          if (currentSets === MAX_SAFE_SETS) break;
+        }
+        if (!reducedInPass) break;
+      }
+    }
+
+    // PASO 3: Asegurar que los compuestos principales nunca bajen de 3 series
+    for (const session of clonedPlan) {
+      for (const ex of session.exercises) {
+        if (ex.muscle === targetMuscleGroup && isPrimaryCompoundExercise(ex)) {
+          if (ex.targetSets < PRIMARY_COMPOUND_MIN_SETS) {
+            ex.targetSets = PRIMARY_COMPOUND_MIN_SETS;
+          }
+        }
+      }
+    }
+
+    currentSets = this.calculateWeeklySetsForMuscle(clonedPlan, targetMuscleGroup);
+
+    return {
+      weeklyPlan: clonedPlan,
+      wasPruned: true,
+      originalSets,
+      finalSets: currentSets,
+      note: PRUNING_NOTE
+    };
+  }
+
+  /**
+   * Aplica poda jerárquica sobre todos los grupos musculares presentes en el plan semanal.
+   */
+  applyHierarchicalPruningAllMuscles(weeklyPlan: PlannedSession[]): AllMusclesPruningResult {
+    let currentPlan: PlannedSession[] = weeklyPlan.map((s) => ({
+      ...s,
+      exercises: s.exercises.map((e) => ({ ...e }))
+    }));
+
+    const musclesSet = new Set<MuscleGroup>();
+    for (const session of currentPlan) {
+      for (const ex of session.exercises) {
+        if (ex.muscle) {
+          musclesSet.add(ex.muscle);
+        }
+      }
+    }
+
+    const prunedMuscles: MuscleGroup[] = [];
+
+    for (const muscle of musclesSet) {
+      const res = this.applyHierarchicalPruning(currentPlan, muscle);
+      if (res.wasPruned) {
+        prunedMuscles.push(muscle);
+        currentPlan = res.weeklyPlan;
+      }
+    }
+
+    return {
+      weeklyPlan: currentPlan,
+      wasPruned: prunedMuscles.length > 0,
+      prunedMuscles,
+      note: prunedMuscles.length > 0 ? PRUNING_NOTE : undefined
+    };
+  }
+
+  /**
+   * Determina si la combinación de tiempo y días disponibles constituye un régimen de tiempo reducido (RF-04 CA-04.4).
+   */
+  isReducedTimeRegime(durationMinutes: number, availableDays: number): boolean {
+    return durationMinutes === 30 || (durationMinutes === 45 && availableDays <= 3);
+  }
+
+  /**
+   * Aplica el principio de Dosis Mínima Efectiva (DME) (6–8 series de alta calidad, RIR 1–2) ante tiempo reducido (RF-04 CA-04.4).
+   */
+  applyDME(weeklyPlan: PlannedSession[], options: DmeOptions): DmeResult {
+    if (!this.isReducedTimeRegime(options.durationMinutes, options.availableDays)) {
+      return {
+        weeklyPlan,
+        isDmeActive: false
+      };
+    }
+
+    const clonedPlan: PlannedSession[] = weeklyPlan.map((session) => ({
+      ...session,
+      exercises: session.exercises.map((ex) => ({ ...ex }))
+    }));
+
+    const musclesSet = new Set<MuscleGroup>();
+    for (const session of clonedPlan) {
+      for (const ex of session.exercises) {
+        if (ex.muscle) {
+          musclesSet.add(ex.muscle);
+        }
+      }
+    }
+
+    for (const muscle of musclesSet) {
+      let currentSets = this.calculateWeeklySetsForMuscle(clonedPlan, muscle);
+
+      // Si está por debajo del piso de DME (6 series), distribuir series adicionales
+      if (currentSets < DME_MIN_SETS) {
+        const muscleExercises: PlannedExerciseWithSets[] = [];
+        for (const session of clonedPlan) {
+          for (const ex of session.exercises) {
+            if (ex.muscle === muscle) {
+              muscleExercises.push(ex);
+            }
+          }
+        }
+
+        let idx = 0;
+        while (currentSets < DME_MIN_SETS && muscleExercises.length > 0) {
+          muscleExercises[idx % muscleExercises.length]!.targetSets += 1;
+          currentSets += 1;
+          idx++;
+        }
+      }
+
+      // Si está por encima del techo de DME (8 series), podar hasta máximo 8 series
+      if (currentSets > DME_MAX_SETS) {
+        while (currentSets > DME_MAX_SETS) {
+          let reduced = false;
+          for (const session of clonedPlan) {
+            for (const ex of session.exercises) {
+              if (ex.muscle === muscle && ex.targetSets > 2) {
+                ex.targetSets -= 1;
+                currentSets -= 1;
+                reduced = true;
+                if (currentSets === DME_MAX_SETS) break;
+              }
+            }
+            if (currentSets === DME_MAX_SETS) break;
+          }
+          if (!reduced) break;
+        }
+      }
+    }
+
+    // Ajustar RIR objetivo a 1–2 (mayor proximidad al fallo debido a menor volumen)
+    for (const session of clonedPlan) {
+      for (const ex of session.exercises) {
+        if (ex.targetRir === undefined || ex.targetRir > 2 || ex.targetRir < 1) {
+          ex.targetRir = 2;
+        }
+      }
+    }
+
+    return {
+      weeklyPlan: clonedPlan,
+      isDmeActive: true,
+      targetRirRange: [1, 2],
+      note: DME_NOTE
     };
   }
 }
