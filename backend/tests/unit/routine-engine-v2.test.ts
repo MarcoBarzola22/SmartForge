@@ -1,9 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   RoutineEngineV2Service,
-  routineEngineV2Service,
   isUnilateralExercise,
-  ROUTINE_TIME_BLOCKS,
   type ExercisePlannedInput
 } from '../../src/services/routine-engine-v2.service.js';
 

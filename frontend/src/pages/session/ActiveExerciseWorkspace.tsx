@@ -21,7 +21,7 @@ export interface ActiveExerciseWorkspaceProps extends React.HTMLAttributes<HTMLD
 
 export const ActiveExerciseWorkspace: React.FC<ActiveExerciseWorkspaceProps> = ({
   exerciseId = 'active-exercise',
-  exerciseName,
+  exerciseName: _exerciseName,
   targetSets,
   targetReps,
   targetLoadKg,

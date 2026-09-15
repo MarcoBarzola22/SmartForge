@@ -63,7 +63,7 @@ describe('TASK-64: Profile Editing Flow & Goal Change Confirmation (RF-01, CA-01
 
     expect(screen.getByRole('heading', { level: 1, name: /Editar Perfil/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/Nombre completo/i)).toHaveValue('Carlos Ruiz');
-    expect(screen.getByLabelText(/Peso corporal \(kg\)/i)).toHaveValue(78.5);
+    expect(screen.getByText('78.5 kg')).toBeInTheDocument();
 
     // Notice about equipment and days taking effect in next mesocycle
     expect(
@@ -87,9 +87,9 @@ describe('TASK-64: Profile Editing Flow & Goal Change Confirmation (RF-01, CA-01
 
     renderEditProfile({ onProfileUpdated });
 
-    // Change weight only (goal remains 'hipertrofia')
-    fireEvent.change(screen.getByLabelText(/Peso corporal \(kg\)/i), {
-      target: { value: '80' }
+    // Change name (goal remains 'hipertrofia')
+    fireEvent.change(screen.getByLabelText(/Nombre completo/i), {
+      target: { value: 'Carlos Ruiz Actualizado' }
     });
 
     // Submit
@@ -98,8 +98,8 @@ describe('TASK-64: Profile Editing Flow & Goal Change Confirmation (RF-01, CA-01
 
     await waitFor(() => {
       expect(updateSpy).toHaveBeenCalledWith({
-        name: 'Carlos Ruiz',
-        weight_kg: 80,
+        name: 'Carlos Ruiz Actualizado',
+        weight_kg: 78.5,
         experience_level: 'intermedio',
         training_goal: 'hipertrofia',
         available_days_per_week: 4,

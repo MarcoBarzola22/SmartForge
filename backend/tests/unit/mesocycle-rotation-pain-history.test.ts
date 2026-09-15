@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  MesocycleRotationService,
-  mesocycleRotationService
+  MesocycleRotationService
 } from '../../src/services/mesocycle-rotation.service.js';
 import type {
   AthleteProfile,
@@ -11,8 +10,7 @@ import type {
   SessionPlan,
   ExerciseAssignment,
   EquipmentItem,
-  Joint,
-  PainIntensity
+  Joint
 } from '../../src/schemas/generated/schemas.js';
 import type { PainReportRecord } from '../../src/repositories/pain-report.repository.js';
 

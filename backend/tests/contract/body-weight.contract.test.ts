@@ -11,7 +11,7 @@ import {
   ErrorResponseSchema,
   ValidationErrorResponseSchema
 } from '../../src/schemas/generated/schemas.js';
-import { ConflictError, NotFoundError, BadRequestError } from '../../src/errors/app-error.js';
+import { ConflictError, NotFoundError } from '../../src/errors/app-error.js';
 
 describe('Contract Tests: Body Weight Endpoints (RF-01, RF-02, Constitución §1, §4)', () => {
   let app: Express;

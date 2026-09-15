@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
 import { render, screen, cleanup } from '@testing-library/react';
 
 // Vistas del Sistema bajo Auditoría Responsiva
@@ -87,6 +86,8 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
       is_compound: true,
       initial_load_ratio: 0.8,
       instructions: 'Bajar controlado al pecho.',
+      video_url: 'https://video.test/bench',
+      video_fallback_url: 'https://fallback.test/bench',
       is_active: true,
     },
     {
@@ -99,6 +100,8 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
       is_compound: true,
       initial_load_ratio: 0.85,
       instructions: 'Romper paralelo con torso erguido.',
+      video_url: 'https://video.test/squat',
+      video_fallback_url: 'https://fallback.test/squat',
       is_active: true,
     },
   ];
@@ -113,7 +116,7 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
         id: 'assign-1',
         session_plan_id: 'sess-plan-101',
         exercise_id: 'ex-bench',
-        exercise: mockExercises[0],
+        exercise: mockExercises[0]!,
         order_in_session: 1,
         target_sets: 3,
         target_reps: 8,
@@ -125,7 +128,7 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
         id: 'assign-2',
         session_plan_id: 'sess-plan-101',
         exercise_id: 'ex-squat',
-        exercise: mockExercises[1],
+        exercise: mockExercises[1]!,
         order_in_session: 2,
         target_sets: 3,
         target_reps: 6,
@@ -146,15 +149,9 @@ describe('T-27: Suite de tests responsive automatizados de cero scroll horizonta
       id: 'chk-1',
       session_id: 'sess-active-1',
       fatigue_level: 2,
-      sleep_quality: 4,
-      muscle_soreness: 1,
-      joint_pain_map: [],
-      notes: '',
+      joint_pains: [],
       created_at: '2026-09-12T10:00:00Z',
     },
-    sets: [],
-    created_at: '2026-09-12T10:00:00Z',
-    updated_at: '2026-09-12T10:00:00Z',
   };
 
   beforeEach(() => {

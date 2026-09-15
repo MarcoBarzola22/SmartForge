@@ -17,7 +17,7 @@ describe('T-04: Blindaje global contra scroll horizontal y utilidades táctiles 
   });
 
   it('debe garantizar box-sizing: border-box global en todos los elementos', () => {
-    expect(indexCss).toMatch(/\*\s*(,\s*\*\::before\s*,\s*\*\::after)?\s*\{[^}]*box-sizing:\s*border-box/);
+    expect(indexCss).toMatch(/\*\s*(,\s*\*::before\s*,\s*\*::after)?\s*\{[^}]*box-sizing:\s*border-box/);
   });
 
   it('debe desactivar el highlight nativo táctil en dispositivos móviles (-webkit-tap-highlight-color: transparent)', () => {

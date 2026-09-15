@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   ExerciseRepository,
   type DbClient,
-  type ExerciseRecord,
   type LoadType
 } from '../../src/repositories/exercise.repository.js';
 

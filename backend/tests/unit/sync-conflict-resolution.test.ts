@@ -3,15 +3,13 @@ import request from 'supertest';
 import type { Express } from 'express';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../../src/app.js';
-import { SyncService, syncService } from '../../src/services/sync.service.js';
+import { syncService } from '../../src/services/sync.service.js';
 import { athleteRepository } from '../../src/repositories/athlete.repository.js';
 import { sessionRepository } from '../../src/repositories/session.repository.js';
 import { checkinRepository } from '../../src/repositories/checkin.repository.js';
-import { setLogRepository } from '../../src/repositories/set-log.repository.js';
-import { painReportRepository } from '../../src/repositories/pain-report.repository.js';
+import { setLogRepository, type SetLogRecord } from '../../src/repositories/set-log.repository.js';
 import type {
   AthleteProfile,
-  SetLog,
   SyncRequest,
   SyncResponse
 } from '../../src/schemas/generated/schemas.js';
@@ -58,7 +56,7 @@ describe('TASK-56: Last-Write-Wins Conflict Resolution (RNF-03, DT-10)', () => {
     updated_at: '2026-09-12T10:00:00.000Z'
   };
 
-  const existingDbSet: SetLog = {
+  const existingDbSet: SetLogRecord = {
     id: existingSetId,
     session_id: sessionId,
     exercise_id: 'press_banca',
@@ -191,10 +189,10 @@ describe('TASK-56: Last-Write-Wins Conflict Resolution (RNF-03, DT-10)', () => {
 
     it('should resolve multiple writes for the same set in a single batch preserving the latest timestamp', async () => {
       // Start with empty DB
-      const currentSets: SetLog[] = [];
+      const currentSets: SetLogRecord[] = [];
       vi.spyOn(setLogRepository, 'findBySessionAndExercise').mockImplementation(async () => currentSets);
       vi.spyOn(setLogRepository, 'create').mockImplementation(async (data) => {
-        const newSet: SetLog = {
+        const newSet: SetLogRecord = {
           id: 'set-new-1',
           session_id: data.session_id,
           exercise_id: data.exercise_id,

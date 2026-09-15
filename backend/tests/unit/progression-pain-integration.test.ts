@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   ProgressionService,
-  progressionService,
   type CalculateProgressionParams,
   type SessionPerformance
 } from '../../src/services/progression.service.js';

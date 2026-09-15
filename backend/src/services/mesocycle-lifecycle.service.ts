@@ -289,10 +289,21 @@ export class MesocycleLifecycleService {
         regularCompleted >= regularPlanned &&
         deloadPlanned > 0;
 
+      let resolvedReason: CompletionReason = 'cancelled_user';
+      if (options?.reason === 'cancelled_injury' || (options?.reason as string) === 'lesion') {
+        resolvedReason = 'cancelled_injury';
+      } else if (options?.reason === 'deload_skipped') {
+        resolvedReason = 'deload_skipped';
+      } else if (options?.reason === 'normal') {
+        resolvedReason = 'normal';
+      } else {
+        resolvedReason = 'cancelled_user';
+      }
+
       const targetStatus: MesocycleStatus = isDeloadSkipped ? 'completed' : 'cancelled';
       const finalReason: CompletionReason = isDeloadSkipped
         ? 'deload_skipped'
-        : (options?.reason ?? 'cancelled_user');
+        : resolvedReason;
 
       // CA-07.7: Actualizar las sesiones futuras no realizadas a 'cancelled' (sin DELETE físico)
       const cancelSessionsSql = `

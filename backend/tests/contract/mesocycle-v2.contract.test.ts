@@ -14,7 +14,6 @@ import {
   RoutineTimeBlockItemSchema,
   MesocycleHistoryItemSchema,
   ErrorResponseSchema,
-  ValidationErrorResponseSchema,
   type MesocycleDetail,
   type MesocycleHistoryItem
 } from '../../src/schemas/generated/schemas.js';
@@ -57,8 +56,6 @@ describe('Contract Tests: Mesocycle V2, Routine Time-Blocks, Cancellation & Hist
     status: 'active',
     start_date: '2026-09-14',
     end_date: '2026-10-26',
-    created_at: '2026-09-14T08:00:00.000Z',
-    updated_at: '2026-09-14T08:00:00.000Z',
     weeks: [
       {
         id: '8ba7b810-9dad-11d1-80b4-00c04fd430ca',

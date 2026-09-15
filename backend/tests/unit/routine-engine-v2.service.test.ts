@@ -1,26 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import {
   RoutineEngineV2Service,
-  routineEngineV2Service,
-  ROUTINE_TIME_BLOCKS,
-  WARMUP_TIME_MINUTES,
   BILATERAL_SET_SECONDS,
   UNILATERAL_SET_SECONDS,
-  COMPOUND_REST_SECONDS,
-  ISOLATION_REST_SECONDS,
-  TRANSITION_TIME_SECONDS,
-  MAX_SAFE_SETS,
   DME_MIN_SETS,
   DME_MAX_SETS,
   DME_NOTE,
   PRUNING_NOTE,
   PRIMARY_COMPOUND_MIN_SETS,
   SECONDARY_COMPOUND_MIN_SETS,
-  ISOLATION_MIN_SETS,
   isUnilateralExercise,
-  isPrimaryCompoundExercise,
   type ExercisePlannedInput,
-  type PlannedExerciseWithSets,
   type PlannedSession
 } from '../../src/services/routine-engine-v2.service.js';
 

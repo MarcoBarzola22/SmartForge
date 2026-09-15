@@ -53,10 +53,13 @@ async function exchangeCodeForIdToken(code: string): Promise<string> {
   return data.id_token;
 }
 
+export type GoogleCodeExchanger = (code: string) => Promise<string>;
+
 export class AuthService {
   constructor(
     private readonly athleteRepo: AthleteRepository = athleteRepository,
-    private readonly verifyGoogleToken: GoogleTokenVerifier = verifyGoogleIdToken
+    private readonly verifyGoogleToken: GoogleTokenVerifier = verifyGoogleIdToken,
+    private readonly exchangeCode: GoogleCodeExchanger = exchangeCodeForIdToken
   ) {}
 
   /**
@@ -70,7 +73,7 @@ export class AuthService {
     let idToken: string;
     if (codeOrToken.startsWith('4/') || codeOrToken.length < 200) {
       // Authorization code → intercambiar por id_token
-      idToken = await exchangeCodeForIdToken(codeOrToken);
+      idToken = await this.exchangeCode(codeOrToken);
     } else {
       // Ya es un id_token (JWT largo)
       idToken = codeOrToken;

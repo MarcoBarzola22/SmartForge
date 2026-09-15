@@ -2,10 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   FatigueAdjusterService,
   fatigueAdjusterService,
-  ANATOMICAL_JOINT_MATRIX,
-  type ExerciseAnatomicalProfile
+  ANATOMICAL_JOINT_MATRIX
 } from '../../src/services/fatigue-adjuster.service.js';
-import type { Joint, MovementPattern, MuscleGroup, Exercise } from '../../src/schemas/generated/schemas.js';
+import type { Joint, Exercise } from '../../src/schemas/generated/schemas.js';
 
 describe('FatigueAdjusterService - Anatomical Joint Mapping Matrix (TASK-46, RF-08, CA-08.1)', () => {
   const service = new FatigueAdjusterService();

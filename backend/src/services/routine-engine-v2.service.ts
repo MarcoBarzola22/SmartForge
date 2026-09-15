@@ -19,6 +19,7 @@ export const PRUNING_NOTE = 'Volumen ajustado jerárquicamente al techo seguro (
 export const PRIMARY_COMPOUND_MIN_SETS = 3;
 export const SECONDARY_COMPOUND_MIN_SETS = 2;
 export const ISOLATION_MIN_SETS = 2;
+export const MAX_SETS_PER_EXERCISE = 4;
 
 export const ROUTINE_TIME_BLOCKS: RoutineTimeBlockItem[] = [
   { duration_minutes: 30, min_exercises: 2, max_exercises: 3, recommended_exercises: 2 },
@@ -581,6 +582,58 @@ export class RoutineEngineV2Service {
       targetRirRange: [1, 2],
       note: DME_NOTE
     };
+  }
+
+  /**
+   * Distribuye el volumen y series para una cantidad dinámica de ejercicios en una sesión (RF-05, RF-06).
+   * Aplica un límite de máximo 4 series por ejercicio; si se requiere más volumen, lo distribuye a los siguientes ejercicios.
+   */
+  distributeSessionVolume(params: {
+    targetExercisesCount: number;
+    totalSessionSets: number;
+    isDeload?: boolean;
+  }): number[] {
+    const count = Math.max(1, params.targetExercisesCount);
+    const targetSets = params.totalSessionSets;
+    const isDeload = params.isDeload ?? false;
+
+    if (isDeload) {
+      const deloadTotal = Math.max(count, Math.round(targetSets * 0.6));
+      const baseSets = Math.floor(deloadTotal / count);
+      const rem = deloadTotal % count;
+      return Array.from({ length: count }, (_, i) => Math.max(1, i < rem ? baseSets + 1 : baseSets));
+    }
+
+    const baseSetsPerEx = Math.floor(targetSets / count);
+    const remainder = targetSets % count;
+    const distribution: number[] = [];
+    let excessVolume = 0;
+
+    for (let i = 0; i < count; i++) {
+      let sets = i < remainder ? baseSetsPerEx + 1 : baseSetsPerEx;
+      if (sets > MAX_SETS_PER_EXERCISE) {
+        excessVolume += sets - MAX_SETS_PER_EXERCISE;
+        sets = MAX_SETS_PER_EXERCISE;
+      } else if (excessVolume > 0 && sets < MAX_SETS_PER_EXERCISE) {
+        const canAdd = Math.min(excessVolume, MAX_SETS_PER_EXERCISE - sets);
+        sets += canAdd;
+        excessVolume -= canAdd;
+      }
+      distribution.push(sets);
+    }
+
+    if (excessVolume > 0) {
+      for (let i = 0; i < distribution.length && excessVolume > 0; i++) {
+        const current = distribution[i];
+        if (typeof current === 'number' && current < MAX_SETS_PER_EXERCISE) {
+          const canAdd = Math.min(excessVolume, MAX_SETS_PER_EXERCISE - current);
+          distribution[i] = current + canAdd;
+          excessVolume -= canAdd;
+        }
+      }
+    }
+
+    return distribution;
   }
 }
 

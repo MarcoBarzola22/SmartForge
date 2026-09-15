@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
 import { render, screen, cleanup } from '@testing-library/react';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,8 +12,6 @@ import { ProfilePage } from '../pages/profile/ProfilePage';
 
 // Componentes Atómicos y de Feedback
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Toast } from '../components/ui/Toast';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -27,7 +24,6 @@ import {
 } from '../components/ui/AlertDialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/Sheet';
 import { BottomNav } from '../components/navigation/BottomNav';
-import { SegmentedSubNav } from '../components/navigation/SegmentedSubNav';
 import { CentralizedSpinner } from '../components/common/CentralizedSpinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { SyncStatusBadge } from '../components/common/SyncStatusBadge';
@@ -103,6 +99,8 @@ describe('T-28: Auditoría de idioma español en interfaz y mensajes visibles (R
       is_compound: true,
       initial_load_ratio: 0.8,
       instructions: 'Bajar controlado al pecho y empujar con fuerza.',
+      video_url: 'https://video.test/bench',
+      video_fallback_url: 'https://fallback.test/bench',
       is_active: true,
     },
   ];
@@ -117,7 +115,7 @@ describe('T-28: Auditoría de idioma español en interfaz y mensajes visibles (R
         id: 'assign-1',
         session_plan_id: 'sess-plan-es',
         exercise_id: 'ex-bench',
-        exercise: mockExercises[0],
+        exercise: mockExercises[0]!,
         order_in_session: 1,
         target_sets: 3,
         target_reps: 8,
@@ -138,15 +136,9 @@ describe('T-28: Auditoría de idioma español en interfaz y mensajes visibles (R
       id: 'chk-1',
       session_id: 'sess-active-es',
       fatigue_level: 2,
-      sleep_quality: 4,
-      muscle_soreness: 1,
-      joint_pain_map: [],
-      notes: '',
+      joint_pains: [],
       created_at: '2026-09-12T10:00:00Z',
     },
-    sets: [],
-    created_at: '2026-09-12T10:00:00Z',
-    updated_at: '2026-09-12T10:00:00Z',
   };
 
   beforeEach(() => {
@@ -338,10 +330,10 @@ describe('T-28: Auditoría de idioma español en interfaz y mensajes visibles (R
     });
 
     it('SyncStatusBadge muestra textos de sincronización offline y online en español', () => {
-      const { rerender } = render(<SyncStatusBadge isOnline={true} pendingCount={0} />);
+      const { rerender } = render(<SyncStatusBadge status="synced" isOnline={true} pendingCount={0} />);
       expect(screen.getByText(/en línea · sincronizado/i)).toBeInTheDocument();
 
-      rerender(<SyncStatusBadge isOnline={false} pendingCount={2} />);
+      rerender(<SyncStatusBadge status="offline" isOnline={false} pendingCount={2} />);
       expect(screen.getByText(/modo offline/i)).toBeInTheDocument();
       expect(screen.getByText('2')).toBeInTheDocument();
 

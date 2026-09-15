@@ -75,7 +75,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     offlineStore.getActiveSession().then((active) => {
       if (active && active.session?.status === 'in_progress' && active.sessionPlan) {
-        setActiveSession(active);
+        setActiveSession({ session: active.session, sessionPlan: active.sessionPlan });
       }
     });
   }, []);

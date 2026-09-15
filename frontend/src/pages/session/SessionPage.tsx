@@ -25,7 +25,6 @@ import {
   CheckCircle,
   Dumbbell,
   ArrowRight,
-  Flame,
   Clock,
   ShieldAlert,
   HeartCrack,

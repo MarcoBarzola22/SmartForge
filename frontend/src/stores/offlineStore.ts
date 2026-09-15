@@ -620,7 +620,9 @@ class OfflineStore {
           'smartforge_active_mesocycle',
           JSON.stringify({ status: 'cancelled', cancelled_at: cancelledAt })
         );
-      } catch {}
+      } catch {
+        // Ignore localStorage write error in tests/restricted envs
+      }
     }
 
     // 4. Enqueue idempotent mutation in sync_queue (CA-07.4)
@@ -665,7 +667,9 @@ class OfflineStore {
           'smartforge_active_mesocycle',
           JSON.stringify({ status: targetStatus, cancelled_at: serverResponse.cancelled_at })
         );
-      } catch {}
+      } catch {
+        // Ignore localStorage write error in tests/restricted envs
+      }
     }
 
     return {

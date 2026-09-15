@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -69,10 +68,10 @@ describe('TASK-79: Mobile Accessibility & Touch Target Audit (RNF-01, RNF-02, RN
     });
 
     it('SyncStatusBadge provides accessible label and clear online/offline status', () => {
-      const { rerender } = render(<SyncStatusBadge isOnline={true} pendingCount={0} />);
+      const { rerender } = render(<SyncStatusBadge status="synced" isOnline={true} pendingCount={0} />);
       expect(screen.getByText(/Sincronizado/i)).toBeDefined();
 
-      rerender(<SyncStatusBadge isOnline={false} pendingCount={3} />);
+      rerender(<SyncStatusBadge status="offline" isOnline={false} pendingCount={3} />);
       expect(screen.getByText(/Modo Offline/i)).toBeDefined();
       expect(screen.getByText('3')).toBeDefined();
     });

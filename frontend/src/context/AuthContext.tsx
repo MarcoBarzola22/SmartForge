@@ -63,6 +63,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Handle OAuth callback: capture token from URL when redirected back from Google
     const url = new URL(window.location.href);
+    const errorParam = url.searchParams.get('error');
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+      window.history.replaceState({}, '', '/');
+      setIsLoading(false);
+      return;
+    }
+
     const tokenFromCallback = url.searchParams.get('token');
     const profileCompleteParam = url.searchParams.get('is_profile_complete');
 

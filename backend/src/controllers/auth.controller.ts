@@ -35,6 +35,13 @@ export class AuthController {
       });
       res.redirect(`${frontendUrl}/auth/callback?${params.toString()}`);
     } catch (err) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      console.error('[Google OAuth Callback Error]', err);
+      if (req.method === 'GET') {
+        const errorMsg = err instanceof Error ? err.message : 'Error al autenticar con Google.';
+        res.redirect(`${frontendUrl}/?error=${encodeURIComponent(errorMsg)}`);
+        return;
+      }
       next(err);
     }
   };

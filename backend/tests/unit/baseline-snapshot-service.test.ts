@@ -3,7 +3,6 @@ import {
   BaselineSnapshotService,
   computeE1RM
 } from '../../src/services/baseline-snapshot.service.js';
-import type { LoadType } from '../../src/schemas/generated/schemas.js';
 
 describe('TASK-17: BaselineSnapshotService (RF-05)', () => {
   const sampleAthleteId = '11111111-1111-1111-1111-111111111111';

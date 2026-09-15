@@ -159,8 +159,8 @@ export class SessionRepository {
   ): Promise<Session | null> {
     const sql = `
       UPDATE session
-      SET status = $2,
-          completed_at = CASE WHEN $2 = 'completed' THEN COALESCE($3::timestamptz, NOW()) ELSE completed_at END,
+      SET status = $2::varchar,
+          completed_at = CASE WHEN $2::varchar = 'completed' THEN COALESCE($3::timestamptz, NOW()) ELSE completed_at END,
           updated_at = NOW()
       WHERE id = $1 AND deleted_at IS NULL
       RETURNING id, athlete_id, session_plan_id, status, started_at, completed_at, client_timestamp, created_at, updated_at, deleted_at;

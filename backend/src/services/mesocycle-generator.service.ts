@@ -18,6 +18,7 @@ import { NotFoundError } from '../errors/app-error.js';
 import type {
   AthleteProfile,
   Exercise,
+  ExercisesPerSessionPreference,
   ExperienceLevel,
   MesocycleDetail,
   MovementPattern,
@@ -25,6 +26,24 @@ import type {
   PeriodizationType,
   TrainingGoal
 } from '../schemas/generated/schemas.js';
+import {
+  routineEngineV2Service,
+  MAX_SETS_PER_EXERCISE
+} from './routine-engine-v2.service.js';
+
+export interface GeneratePlanOptions {
+  durationWeeks?: number;
+  custom_duration_weeks?: number;
+  customDurationWeeks?: number;
+  target_exercises_per_session?: number;
+  targetExercisesPerSession?: number;
+  session_duration_minutes?: number;
+  sessionDurationMinutes?: number;
+  exercisesPerSessionPreference?: ExercisesPerSessionPreference;
+  target_goal?: TrainingGoal;
+  targetGoal?: TrainingGoal;
+  availableDays?: number;
+}
 
 export const ALL_MOVEMENT_PATTERNS: MovementPattern[] = [
   'empuje',
@@ -89,13 +108,44 @@ export class MesocycleGeneratorService {
   ) {}
 
   /**
-   * Obtiene la plantilla de días y slots de patrones de movimiento según los días disponibles.
-   * Diseñado para garantizar que los 5 patrones principales estén presentes semanalmente (CA-02.1).
+   * Expande o ajusta dinámicamente los slots de patrones de un día para que coincida con targetExercisesCount (TASK-45).
    */
-  getSplitTemplate(daysPerWeek: number): SessionSlotTemplate[] {
+  expandPatternSlots(baseSlots: MovementPattern[], targetCount: number): MovementPattern[] {
+    if (baseSlots.length === targetCount) {
+      return [...baseSlots];
+    }
+    if (targetCount < baseSlots.length) {
+      return baseSlots.slice(0, targetCount);
+    }
+
+    const nonCore = Array.from(new Set(baseSlots.filter((p) => p !== 'core')));
+    const hasCore = baseSlots.includes('core');
+    const pool = nonCore.length > 0 ? nonCore : baseSlots;
+
+    const result: MovementPattern[] = [];
+    const mainSlotsCount = hasCore ? targetCount - 1 : targetCount;
+
+    for (let i = 0; i < mainSlotsCount; i++) {
+      result.push(pool[i % pool.length]!);
+    }
+
+    if (hasCore) {
+      result.push('core');
+    }
+
+    return result;
+  }
+
+  /**
+   * Obtiene la plantilla de días y slots de patrones de movimiento según los días disponibles y ejercicios por sesión.
+   * Diseñado para garantizar que los 5 patrones principales estén presentes semanalmente (CA-02.1)
+   * y que el número de ejercicios por sesión sea dinámico (TASK-45).
+   */
+  getSplitTemplate(daysPerWeek: number, targetExercisesPerSession?: number): SessionSlotTemplate[] {
     const days = Math.max(1, Math.min(7, Math.round(daysPerWeek)));
 
-    switch (days) {
+    const templates: SessionSlotTemplate[] = (() => {
+      switch (days) {
       case 1:
         // CL-01: 1 día full-body cubriendo todos los patrones
         return [
@@ -271,7 +321,17 @@ export class MesocycleGeneratorService {
           }
         ];
     }
+  })();
+
+  if (targetExercisesPerSession && targetExercisesPerSession > 0) {
+    return templates.map((template) => ({
+      name: template.name,
+      pattern_slots: this.expandPatternSlots(template.pattern_slots, targetExercisesPerSession)
+    }));
   }
+
+  return templates;
+}
 
   /**
    * Determina si el atleta tiene solo equipamiento de peso corporal.
@@ -402,7 +462,8 @@ export class MesocycleGeneratorService {
   calculateSetsDistribution(
     experienceLevel: ExperienceLevel,
     totalSlots: number,
-    isDeload = false
+    isDeload = false,
+    enforceMaxSets = false
   ): number[] {
     if (totalSlots <= 0) return [];
 
@@ -413,13 +474,38 @@ export class MesocycleGeneratorService {
     const remainder = targetSets % totalSlots;
 
     const distribution: number[] = [];
+    let excessSets = 0;
+
     for (let i = 0; i < totalSlots; i++) {
-      const sets = i < remainder ? baseSetsPerSlot + 1 : baseSetsPerSlot;
+      let sets = i < remainder ? baseSetsPerSlot + 1 : baseSetsPerSlot;
       if (isDeload) {
         // Reducción de ~40% de volumen para deload (CA-10.2)
         distribution.push(Math.max(1, Math.round(sets * 0.6)));
       } else {
+        // Aplica límite de máximo 4 series por ejercicio si enforceMaxSets está activo (TASK-45)
+        // Si se necesita más volumen, debe usar el siguiente ejercicio seleccionado
+        if (enforceMaxSets) {
+          if (sets > MAX_SETS_PER_EXERCISE) {
+            excessSets += sets - MAX_SETS_PER_EXERCISE;
+            sets = MAX_SETS_PER_EXERCISE;
+          } else if (excessSets > 0 && sets < MAX_SETS_PER_EXERCISE) {
+            const canAdd = Math.min(excessSets, MAX_SETS_PER_EXERCISE - sets);
+            sets += canAdd;
+            excessSets -= canAdd;
+          }
+        }
         distribution.push(sets);
+      }
+    }
+
+    if (excessSets > 0 && enforceMaxSets && !isDeload) {
+      for (let i = 0; i < distribution.length && excessSets > 0; i++) {
+        const current = distribution[i];
+        if (typeof current === 'number' && current < MAX_SETS_PER_EXERCISE) {
+          const canAdd = Math.min(excessSets, MAX_SETS_PER_EXERCISE - current);
+          distribution[i] = current + canAdd;
+          excessSets -= canAdd;
+        }
       }
     }
 
@@ -692,20 +778,48 @@ export class MesocycleGeneratorService {
   async generatePlanStructure(
     athlete: AthleteProfile,
     catalog: Exercise[],
-    durationWeeks?: number
+    durationWeeksOrOptions?: number | GeneratePlanOptions,
+    optionsArg?: GeneratePlanOptions
   ): Promise<CreateMesocycleData> {
+    let durationWeeks: number | undefined;
+    let options: GeneratePlanOptions | undefined;
+
+    if (typeof durationWeeksOrOptions === 'number') {
+      durationWeeks = durationWeeksOrOptions;
+      options = optionsArg;
+    } else if (durationWeeksOrOptions && typeof durationWeeksOrOptions === 'object') {
+      options = durationWeeksOrOptions;
+      durationWeeks =
+        options.durationWeeks ??
+        options.custom_duration_weeks ??
+        options.customDurationWeeks;
+    } else {
+      options = optionsArg;
+    }
+
     const defaultDuration = this.getDefaultMesocycleDuration(athlete.experience_level);
     const weeksCount = durationWeeks
       ? Math.max(4, Math.min(8, durationWeeks))
       : defaultDuration;
 
+    const targetExercises =
+      options?.target_exercises_per_session ??
+      options?.targetExercisesPerSession ??
+      (options?.exercisesPerSessionPreference?.mode === 'manual'
+        ? (options?.exercisesPerSessionPreference?.customCount ?? undefined)
+        : options?.sessionDurationMinutes
+          ? routineEngineV2Service.getTimeBlockByDuration(options.sessionDurationMinutes)?.recommended_exercises
+          : undefined);
+
+    const daysPerWeek = options?.availableDays ?? athlete.available_days_per_week;
     const athleteEquipmentIds = athlete.equipment.map((eq) => eq.id);
-    const splitTemplate = this.getSplitTemplate(athlete.available_days_per_week);
+    const splitTemplate = this.getSplitTemplate(daysPerWeek, targetExercises);
     const isConstrained = this.isEquipmentConstrained(athlete, catalog);
 
     // Determinar tipo de periodización por objetivo
+    const goal = options?.target_goal ?? options?.targetGoal ?? athlete.training_goal;
     const periodizationType: PeriodizationType =
-      athlete.training_goal === 'fuerza' ? 'lineal' : 'ondulante';
+      goal === 'fuerza' ? 'lineal' : 'ondulante';
 
     const weeks: CreateWeekPlanData[] = [];
 
@@ -731,12 +845,13 @@ export class MesocycleGeneratorService {
       const sessions: CreateSessionPlanData[] = [];
 
       // Calcular la distribución exacta de series para cada patrón en esta semana
+      const enforceMaxSets = Boolean(targetExercises && targetExercises > 0);
       const patternSetsDistribution: Record<MovementPattern, number[]> = {
-        empuje: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.empuje, isDeload),
-        tiron: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.tiron, isDeload),
-        rodilla_dominante: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.rodilla_dominante, isDeload),
-        cadera_dominante: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.cadera_dominante, isDeload),
-        core: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.core, isDeload)
+        empuje: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.empuje, isDeload, enforceMaxSets),
+        tiron: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.tiron, isDeload, enforceMaxSets),
+        rodilla_dominante: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.rodilla_dominante, isDeload, enforceMaxSets),
+        cadera_dominante: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.cadera_dominante, isDeload, enforceMaxSets),
+        core: this.calculateSetsDistribution(athlete.experience_level, patternSlotCounts.core, isDeload, enforceMaxSets)
       };
 
       const patternSlotIndexCounter: Record<MovementPattern, number> = {
@@ -749,6 +864,7 @@ export class MesocycleGeneratorService {
 
       splitTemplate.forEach((template, dayIndex) => {
         const assignments: CreateExerciseAssignmentData[] = [];
+        const usedInThisSession = new Set<string>();
 
         template.pattern_slots.forEach((pattern, slotIndex) => {
           const slotKey = `${dayIndex}_${slotIndex}_${pattern}`;
@@ -761,10 +877,29 @@ export class MesocycleGeneratorService {
               athleteEquipmentIds
             );
 
-            if (candidates.length > 0) {
-              const index = slotIndex % candidates.length;
-              selectedExercise = candidates[index] || candidates[0];
-              assignedExercisesPerSlot.set(slotKey, selectedExercise!);
+            const unusedCandidates = candidates.filter((c) => !usedInThisSession.has(c.id));
+
+            if (unusedCandidates.length > 0) {
+              selectedExercise = unusedCandidates[0];
+            } else if (enforceMaxSets) {
+              // Si se especificó target dinámico y se agotaron los candidatos de este patrón, buscar en otros patrones del mismo día
+              const otherDayPatterns = Array.from(new Set(template.pattern_slots)).filter((p) => p !== pattern);
+              let fallbackExercise: Exercise | undefined;
+              for (const altPattern of otherDayPatterns) {
+                const altCandidates = this.filterCandidateExercises(
+                  catalog,
+                  altPattern,
+                  athleteEquipmentIds
+                );
+                const unusedAlt = altCandidates.filter((c) => !usedInThisSession.has(c.id));
+                if (unusedAlt.length > 0) {
+                  fallbackExercise = unusedAlt[0];
+                  break;
+                }
+              }
+              selectedExercise = fallbackExercise || (candidates.length > 0 ? candidates[slotIndex % candidates.length] : undefined);
+            } else if (candidates.length > 0) {
+              selectedExercise = candidates[slotIndex % candidates.length];
             } else {
               // Si no hay candidato estricto, buscar candidatos de peso corporal del patrón
               const bwCandidates = catalog.filter(
@@ -775,14 +910,25 @@ export class MesocycleGeneratorService {
                     e.equipment_id === 'sin_equipamiento') &&
                   e.is_active
               );
-              selectedExercise = bwCandidates[0] || catalog[0]!;
-              assignedExercisesPerSlot.set(slotKey, selectedExercise);
+              const unusedBw = bwCandidates.filter((c) => !usedInThisSession.has(c.id));
+              selectedExercise =
+                unusedBw[0] ||
+                bwCandidates[0] ||
+                catalog.find((e) => e.movement_pattern === pattern) ||
+                catalog[0]!;
             }
+
+            assignedExercisesPerSlot.set(slotKey, selectedExercise!);
           }
 
+          usedInThisSession.add(selectedExercise!.id);
+
           const currentSlotIdx = patternSlotIndexCounter[pattern]++;
-          const assignedSets =
+          const rawAssignedSets =
             patternSetsDistribution[pattern][currentSlotIdx] || (isDeload ? 2 : 3);
+          const assignedSets = isDeload
+            ? Math.max(1, rawAssignedSets)
+            : (enforceMaxSets ? Math.min(MAX_SETS_PER_EXERCISE, Math.max(1, rawAssignedSets)) : rawAssignedSets);
 
           const baseLoad = this.calculateInitialLoad(athlete, selectedExercise!);
           const progression = this.calculateWeeklyProgression(
@@ -790,7 +936,7 @@ export class MesocycleGeneratorService {
             w,
             weeksCount,
             periodizationType,
-            athlete.training_goal,
+            goal,
             isDeload
           );
 
@@ -819,7 +965,7 @@ export class MesocycleGeneratorService {
       });
     }
 
-    const baseName = `Mesociclo ${athlete.training_goal.toUpperCase()} - ${athlete.experience_level}`;
+    const baseName = `Mesociclo ${goal.toUpperCase()} - ${athlete.experience_level}`;
     const mesocycleName = isConstrained
       ? `${baseName} (${LIMITED_EQUIPMENT_WARNING})`
       : baseName;
@@ -828,9 +974,11 @@ export class MesocycleGeneratorService {
       athlete_id: athlete.id,
       name: mesocycleName,
       experience_level: athlete.experience_level,
-      training_goal: athlete.training_goal,
+      training_goal: goal,
       periodization_type: periodizationType,
       duration_weeks: weeksCount,
+      target_exercises_per_session: targetExercises,
+      session_duration_minutes: options?.session_duration_minutes ?? options?.sessionDurationMinutes,
       weeks
     };
   }
@@ -840,10 +988,11 @@ export class MesocycleGeneratorService {
    */
   async generateForAthlete(
     athlete: AthleteProfile,
-    durationWeeks?: number
+    durationWeeksOrOptions?: number | GeneratePlanOptions,
+    optionsArg?: GeneratePlanOptions
   ): Promise<CreateMesocycleData> {
     const catalog = await this.exerciseRepo.findAll({ limit: 500 });
-    return this.generatePlanStructure(athlete, catalog, durationWeeks);
+    return this.generatePlanStructure(athlete, catalog, durationWeeksOrOptions, optionsArg);
   }
 
   /**
@@ -859,20 +1008,21 @@ export class MesocycleGeneratorService {
    */
   async generateAndPersistForAthlete(
     athleteId: string,
-    options?: { target_goal?: TrainingGoal; custom_duration_weeks?: number }
+    options?: GeneratePlanOptions
   ): Promise<MesocycleDetail> {
     const athlete = await this.athleteRepo.findById(athleteId);
     if (!athlete) {
       throw new NotFoundError('Perfil de atleta no encontrado.');
     }
 
-    const effectiveAthlete: AthleteProfile = options?.target_goal
-      ? { ...athlete, training_goal: options.target_goal }
+    const effectiveGoal = options?.target_goal || options?.targetGoal;
+    const effectiveAthlete: AthleteProfile = effectiveGoal
+      ? { ...athlete, training_goal: effectiveGoal }
       : athlete;
 
     const planData = await this.generateForAthlete(
       effectiveAthlete,
-      options?.custom_duration_weeks
+      options
     );
 
     // Archivar mesociclos activos previos

@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   BaselineSnapshotService,
-  baselineSnapshotService,
-  computeE1RM,
-  DEFAULT_INITIAL_LOAD_RATIOS
+  computeE1RM
 } from '../../src/services/baseline-snapshot.service.js';
-import type { LoadType } from '../../src/schemas/generated/schemas.js';
 
 describe('TASK-26: BaselineSnapshotService Unit Tests (RF-05, Constitución Art. 4)', () => {
   const sampleAthleteId = '11111111-1111-1111-1111-111111111111';
@@ -298,7 +295,7 @@ describe('TASK-26: BaselineSnapshotService Unit Tests (RF-05, Constitución Art.
 
       mockBaselineSnapshotRepo.createBatch.mockImplementation(async (items: any[]) => items);
 
-      const result = await service.captureBaselinesForMesocycle({
+      await service.captureBaselinesForMesocycle({
         mesocycleId: sampleMesocycleId,
         athleteId: sampleAthleteId,
         exerciseIds: ['bench', 'squat', 'bench'] // 'bench' duplicado debe ser desduplicado

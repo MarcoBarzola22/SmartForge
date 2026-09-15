@@ -5,7 +5,20 @@ import { AuthContext, AuthContextType } from './context/AuthContext';
 
 describe('TASK-60: App Component Bottom Navigation Integration (RNF-01, Constitución §2)', () => {
   const mockAuth: AuthContextType = {
-    user: { id: 'u1', email: 'test@example.com', role: 'athlete', created_at: '2026-01-01' },
+    user: {
+      id: 'u1',
+      google_id: 'google-sub-1',
+      email: 'test@example.com',
+      name: 'Test Athlete',
+      age: 25,
+      weight_kg: 75,
+      experience_level: 'intermedio',
+      training_goal: 'hipertrofia',
+      available_days_per_week: 4,
+      equipment: [],
+      created_at: '2026-01-01',
+      updated_at: '2026-01-01'
+    },
     token: 'jwt-token',
     isAuthenticated: true,
     isProfileComplete: true,

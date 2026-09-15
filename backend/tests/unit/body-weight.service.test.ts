@@ -8,7 +8,7 @@ import {
 import { BodyWeightRepository } from '../../src/repositories/body-weight.repository.js';
 import { AthleteRepository } from '../../src/repositories/athlete.repository.js';
 import { setLogRepository } from '../../src/repositories/set-log.repository.js';
-import { BadRequestError, ConflictError, NotFoundError } from '../../src/errors/app-error.js';
+import { BadRequestError, ConflictError } from '../../src/errors/app-error.js';
 import type { BodyWeightLogRecord } from '../../src/repositories/body-weight.repository.js';
 
 describe('TASK-24: BodyWeightService Unit Tests (RF-01, RF-02, Constitución Art. 4)', () => {

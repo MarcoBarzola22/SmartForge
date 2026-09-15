@@ -27,7 +27,8 @@ import {
 import {
   MesocycleGeneratorService,
   mesocycleGeneratorService,
-  LIMITED_EQUIPMENT_WARNING
+  LIMITED_EQUIPMENT_WARNING,
+  type GeneratePlanOptions
 } from './mesocycle-generator.service.js';
 import {
   FatigueAdjusterService,
@@ -44,7 +45,6 @@ import type {
   PainIntensity,
   PeriodizationType,
   SessionPlan,
-  TrainingGoal,
   WeekPlan
 } from '../schemas/generated/schemas.js';
 
@@ -586,21 +586,29 @@ export class MesocycleRotationService {
    */
   async rotateAndPersistForAthlete(
     athleteId: string,
-    options?: { target_goal?: TrainingGoal; custom_duration_weeks?: number }
+    options?: GeneratePlanOptions
   ): Promise<MesocycleDetail> {
     const athlete = await this.athleteRepo.findById(athleteId);
     if (!athlete) {
       throw new NotFoundError('Perfil de atleta no encontrado.');
     }
 
-    const effectiveAthlete: AthleteProfile = options?.target_goal
-      ? { ...athlete, training_goal: options.target_goal }
+    const effectiveGoal = options?.target_goal || options?.targetGoal;
+    const effectiveAthlete: AthleteProfile = effectiveGoal
+      ? { ...athlete, training_goal: effectiveGoal }
       : athlete;
 
     const activeMesocycle = await this.mesocycleRepo.findActiveByAthleteId(athleteId);
 
-    // Si no hay mesociclo activo previo, delegar en generación desde cero
-    if (!activeMesocycle) {
+    // Si no hay mesociclo activo previo o si se especifican parámetros dinámicos de sesión, delegar en generación desde cero
+    if (
+      !activeMesocycle ||
+      options?.target_exercises_per_session ||
+      options?.targetExercisesPerSession ||
+      options?.exercisesPerSessionPreference ||
+      options?.sessionDurationMinutes ||
+      options?.session_duration_minutes
+    ) {
       return this.mesocycleGenService.generateAndPersistForAthlete(athleteId, options);
     }
 

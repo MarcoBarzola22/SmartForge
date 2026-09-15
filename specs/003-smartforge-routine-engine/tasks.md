@@ -179,23 +179,23 @@
   - **RF**: RF-01, RF-02, Constitución Art. 2, Art. 6
   - **Hecho cuando**: El modal se ubica en la mitad inferior de la pantalla (operable con una mano en ≤390px), posee botones ≥ 48px, valida rangos numéricos y muestra la advertencia contextual al editar datos históricos.
 
-- [ ] **TASK-33**: Implementar `WeightHistoryList.tsx` para visualización cronológica de peso y pesajes retroactivos.
+- [x] **TASK-33**: Implementar `WeightHistoryList.tsx` para visualización cronológica de peso y pesajes retroactivos.
   - **RF**: RF-02, Constitución Art. 2
   - **Hecho cuando**: El componente lista los pesajes con su fecha, peso en kg y delta respecto a la semana previa, sin scroll horizontal, permitiendo seleccionar semanas vacías para carga retroactiva.
 
-- [ ] **TASK-34**: Implementar `MesocycleWizardV2.tsx` con selección de bloques fijos uniformes y ejercicios por día.
+- [x] **TASK-34**: Implementar `MesocycleWizardV2.tsx` con selección de bloques fijos uniformes y ejercicios por día.
   - **RF**: RF-03, RF-04, Constitución Art. 2
   - **Hecho cuando**: La interfaz permite seleccionar días (1–7), bloques fijos (30–120 min), conmutar entre recomendación dinámica o manual (2–7 ej/día) y muestra alertas pedagógicas ante combinaciones inviables.
 
-- [ ] **TASK-35**: Implementar `CancellationModal.tsx` con diálogo de confirmación destructiva.
+- [x] **TASK-35**: Implementar `CancellationModal.tsx` con diálogo de confirmación destructiva.
   - **RF**: RF-07, Constitución Art. 2, Art. 6
   - **Hecho cuando**: El diálogo explica claramente que se descartará la planificación futura pero se conservarán los pesos levantados, con botón destructivo de confirmación ≥ 48px y soporte de aviso offline.
 
-- [ ] **TASK-36**: Implementar `EmptyMesocycleState.tsx` para el estado "Sin mesociclo activo".
+- [x] **TASK-36**: Implementar `EmptyMesocycleState.tsx` para el estado "Sin mesociclo activo".
   - **RF**: RF-07, Constitución Art. 2
   - **Hecho cuando**: Muestra un estado vacío estilizado en la vista principal con un CTA prominente a *"Generar nuevo mesociclo"* cuando el usuario no tiene una rutina activa.
 
-- [ ] **TASK-37**: Implementar `MesocycleHistoryCard.tsx` y `ExerciseProgressionCard.tsx` en tarjetas verticales apiladas.
+- [x] **TASK-37**: Implementar `MesocycleHistoryCard.tsx` y `ExerciseProgressionCard.tsx` en tarjetas verticales apiladas.
   - **RF**: RF-06, Constitución Art. 2, Art. 6
   - **Hecho cuando**: Cada tarjeta muestra nombre, grupo muscular, Punto de Partida, Carga Final alcanzada y el delta en kg sobre 1RM est. (`delta_kg = e1RM_cierre - e1RM_inicio`) y porcentaje, con cero scroll horizontal en ≤ 390px.
 
@@ -203,15 +203,15 @@
 
 ## Fase 9: Frontend — Integración de páginas y flujos
 
-- [ ] **TASK-38**: Integrar módulo de peso corporal e historial en `ProfilePage.tsx` y advertencia de cambio de disponibilidad.
+- [x] **TASK-38**: Integrar módulo de peso corporal e historial en `ProfilePage.tsx` y advertencia de cambio de disponibilidad.
   - **RF**: RF-01, RF-02, RF-09
   - **Hecho cuando**: El atleta puede consultar y registrar su peso desde el perfil, y si intenta alterar días o tiempos con ciclo activo recibe el modal educativo sugiriendo cancelar y regenerar el ciclo.
 
-- [ ] **TASK-39**: Integrar `MesocycleWizardV2`, botón de anulación y estado vacío en `MesocyclePage.tsx`.
+- [x] **TASK-39**: Integrar `MesocycleWizardV2`, botón de anulación y estado vacío en `MesocyclePage.tsx`.
   - **RF**: RF-03, RF-04, RF-05, RF-07
   - **Hecho cuando**: La página renderiza el asistente V2 para nuevos ciclos, el botón de cancelar en el ciclo activo y transiciona inmediatamente al estado vacío tras confirmar la cancelación.
 
-- [ ] **TASK-40**: Integrar `RoutineHistoryPage.tsx` para listar mesociclos completados y cancelados.
+- [x] **TASK-40**: Integrar `RoutineHistoryPage.tsx` para listar mesociclos completados y cancelados.
   - **RF**: RF-06
   - **Hecho cuando**: La página carga el historial cronológico inverso distinguiendo con insignias visibles los ciclos *Completados*, *Completados (Descarga omitida)* y *Cancelados*, desplegando las tarjetas de progresión por ejercicio.
 
@@ -219,14 +219,26 @@
 
 ## Fase 10: Tests UI, verificación E2E y auditoría de CI
 
-- [ ] **TASK-41**: Crear tests de componentes en `frontend/src/` (`WeightLogModal.test.tsx`, `MesocycleWizardV2.test.tsx`, `CancellationModal.test.tsx`).
+- [x] **TASK-41**: Crear tests de componentes en `frontend/src/` (`WeightLogModal.test.tsx`, `MesocycleWizardV2.test.tsx`, `CancellationModal.test.tsx`).
   - **RF**: RF-01 a RF-07, Constitución Art. 4
   - **Hecho cuando**: Vitest ejecuta los tests de componentes verificando el flujo de registro de peso, cálculo reactivo de *N* en el wizard y confirmación de cancelación con 100% de éxito.
 
-- [ ] **TASK-42**: Validar diseño mobile-first a una mano en viewport de 390px de ancho.
+- [x] **TASK-42**: Validar diseño mobile-first a una mano en viewport de 390px de ancho.
   - **RF**: Constitución Art. 2
   - **Hecho cuando**: Se comprueba programáticamente y visualmente que ningún elemento genera scroll horizontal (`document.body.scrollWidth <= 390`) y todos los botones primarios cumplen altura ≥ 48px en la mitad inferior.
 
-- [ ] **TASK-43**: Ejecutar suite completa de CI (linters, typecheck, unit tests y contract tests).
+- [x] **TASK-43**: Ejecutar suite completa de CI (linters, typecheck, unit tests y contract tests).
   - **RF**: Constitución Art. 4, Art. 6
   - **Hecho cuando**: Los comandos `npm run lint`, `npm run typecheck` y `npm run test` pasan limpiamente con 0 errores en backend y frontend, completando la ejecución en menos de 3 minutos.
+
+- [x] **TASK-44: Limpieza de UI en ProfilePage (Input duplicado)**
+  - **RF cubiertos:** RF-01
+  - **Archivos:** `src/pages/profile/ProfilePage.tsx`
+  - **Descripción:** Eliminar el campo de entrada crudo de "Peso corporal (kg)" que quedó residual dentro del bloque "Datos del Atleta", dejando exclusivamente el panel nuevo de "Peso Corporal e Historial" para gestionar esta métrica.
+  - **Hecho cuando:** El perfil ya no muestra dos lugares distintos para el peso.
+
+  - [x] **TASK-45: Erradicar límite hardcodeado de 3 ejercicios y forzar dispersión dinámica**
+  - **RF cubiertos:** RF-05, RF-06
+  - **Archivos:** `backend/src/services/routine-engine-v2.service.ts` (o el servicio de generación de mesociclos)
+  - **Descripción:** El motor está devolviendo exactamente 3 ejercicios por día ignorando el input del usuario. Se debe buscar y eliminar cualquier límite estático (`.slice(0, 3)`, bucles fijos, o plantillas de 3 slots). El algoritmo debe iterar y agregar ejercicios distintos al array del día hasta que la longitud de ejercicios coincida con el parámetro `target_exercises_per_session`, distribuyendo el volumen muscular diario en bloques de máximo 3-4 series por ejercicio.
+  - **Hecho cuando:** Al solicitar 5 ejercicios para un día, la API devuelve un array con 5 ejercicios distintos, eliminando el techo artificial de 3.

@@ -1,8 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   RoutineEngineV2Service,
-  routineEngineV2Service,
-  MAX_SAFE_SETS,
   DME_MIN_SETS,
   DME_MAX_SETS,
   DME_NOTE,
@@ -10,8 +8,7 @@ import {
   PRIMARY_COMPOUND_MIN_SETS,
   ISOLATION_MIN_SETS,
   SECONDARY_COMPOUND_MIN_SETS,
-  type PlannedSession,
-  type PlannedExerciseWithSets
+  type PlannedSession
 } from '../../src/services/routine-engine-v2.service.js';
 
 describe('TASK-16: RoutineEngineV2Service - DME and Hierarchical Pruning (RF-04)', () => {

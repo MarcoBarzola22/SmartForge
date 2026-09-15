@@ -4,8 +4,6 @@ import type { Express } from 'express';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../../src/app.js';
 import { mesocycleRepository } from '../../src/repositories/mesocycle.repository.js';
-import { athleteRepository } from '../../src/repositories/athlete.repository.js';
-import { exerciseRepository } from '../../src/repositories/exercise.repository.js';
 import { mesocycleLifecycleService } from '../../src/services/mesocycle-lifecycle.service.js';
 import { mesocycleHistoryService } from '../../src/services/mesocycle-history.service.js';
 import { baselineSnapshotService } from '../../src/services/baseline-snapshot.service.js';
@@ -24,6 +22,21 @@ describe('TASK-23: Mesocycle V2 Endpoints, Cancellation, History and Availabilit
     jwtSecret
   );
 
+  const mockExercise = {
+    id: 'bench_press',
+    name: 'Press de banca',
+    movement_pattern: 'empuje' as const,
+    primary_muscle: 'pecho' as const,
+    secondary_muscles: ['triceps' as const],
+    equipment_id: 'barbell',
+    is_compound: true,
+    initial_load_ratio: 0.8,
+    instructions: 'Instrucciones',
+    video_url: 'https://video.test/bench',
+    video_fallback_url: 'https://fallback.test/bench',
+    is_active: true
+  };
+
   const mockMesocycleDetail: MesocycleDetail = {
     id: mesocycleId,
     athlete_id: athleteId,
@@ -35,8 +48,6 @@ describe('TASK-23: Mesocycle V2 Endpoints, Cancellation, History and Availabilit
     status: 'active',
     start_date: '2026-09-14',
     end_date: '2026-10-26',
-    created_at: '2026-09-14T08:00:00.000Z',
-    updated_at: '2026-09-14T08:00:00.000Z',
     weeks: [
       {
         id: 'w1',
@@ -46,20 +57,21 @@ describe('TASK-23: Mesocycle V2 Endpoints, Cancellation, History and Availabilit
         sessions: [
           {
             id: 's1',
-            week_id: 'w1',
+            week_plan_id: 'w1',
             day_number: 1,
             name: 'Torso A',
-            is_completed: false,
             exercise_assignments: [
               {
                 id: 'ea1',
-                session_id: 's1',
+                session_plan_id: 's1',
                 exercise_id: 'bench_press',
+                exercise: mockExercise,
                 order_in_session: 1,
                 target_sets: 3,
                 target_reps: 8,
                 target_rir: 2,
-                target_load_kg: 70
+                target_load_kg: 70,
+                is_swapped: false
               }
             ]
           }

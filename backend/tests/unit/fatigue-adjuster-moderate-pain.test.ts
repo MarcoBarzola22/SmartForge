@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   FatigueAdjusterService,
   fatigueAdjusterService,
-  type ModeratePainAdjustmentParams,
-  type ModeratePainAdjustmentResult
+  type ModeratePainAdjustmentParams
 } from '../../src/services/fatigue-adjuster.service.js';
 import type { Joint, PainIntensity } from '../../src/schemas/generated/schemas.js';
 

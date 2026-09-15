@@ -107,11 +107,15 @@ export async function authenticate(
 
     let athleteId = String(decoded.id || decoded.sub || '');
     if (!athleteId) {
-      const athlete =
-        (await athleteRepository.findByGoogleId(decoded.google_id)) ||
-        (await athleteRepository.findByEmail(decoded.email));
-      if (athlete) {
-        athleteId = athlete.id;
+      try {
+        const athlete =
+          (await athleteRepository.findByGoogleId(decoded.google_id)) ||
+          (await athleteRepository.findByEmail(decoded.email));
+        if (athlete) {
+          athleteId = athlete.id;
+        }
+      } catch {
+        // En onboarding el atleta no existe aún en BD o BD no conectada en tests
       }
     }
 

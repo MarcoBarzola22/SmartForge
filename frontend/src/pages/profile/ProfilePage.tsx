@@ -14,24 +14,33 @@ import type {
   TrainingGoal,
   AthleteProfile,
   CreateProfileRequest,
-  UpdateProfileRequest
+  UpdateProfileRequest,
+  WeightLogItem
 } from '../../api';
-import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info } from 'lucide-react';
+import { fetchWeightLogs, createWeightLog, updateWeightLog } from '../../api';
+import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info, Scale } from 'lucide-react';
+import { WeightLogModal } from '../../components/weight/WeightLogModal';
+import { WeightHistoryList } from '../../components/weight/WeightHistoryList';
+import { CancellationModal } from '../../components/mesocycle/CancellationModal';
 
 export interface ProfilePageProps {
   mode?: 'create' | 'edit';
   initialProfile?: AthleteProfile | null;
+  hasActiveMesocycle?: boolean;
   onProfileCreated?: () => void;
   onProfileUpdated?: (updatedProfile: AthleteProfile) => void;
   onCancel?: () => void;
+  onCancelActiveMesocycle?: () => void;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   mode,
   initialProfile,
+  hasActiveMesocycle: propHasActiveMesocycle,
   onProfileCreated,
   onProfileUpdated,
-  onCancel
+  onCancel,
+  onCancelActiveMesocycle
 }) => {
   const { user, restoreSession, logout } = useAuth();
   const currentProfile = initialProfile ?? (mode === 'edit' ? user : null);
@@ -52,6 +61,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [availableDays, setAvailableDays] = useState<number>(
     currentProfile?.available_days_per_week ?? 4
   );
+  const [initialSavedDays, setInitialSavedDays] = useState<number>(
+    currentProfile?.available_days_per_week ?? 4
+  );
   const [equipmentIds, setEquipmentIds] = useState<string[]>(
     currentProfile?.equipment?.map((e) => e.id) ?? []
   );
@@ -62,6 +74,79 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isGoalChangeModalOpen, setIsGoalChangeModalOpen] = useState(false);
 
+  // Active mesocycle detection & availability warning (RF-09 CA-09.1)
+  const [hasActiveMeso, setHasActiveMeso] = useState<boolean>(propHasActiveMesocycle ?? false);
+  const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
+  const [pendingDays, setPendingDays] = useState<number | null>(null);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
+  // Weight tracking & history module (RF-01, RF-02)
+  const [weightLogs, setWeightLogs] = useState<WeightLogItem[]>([]);
+  const [isLoadingWeightLogs, setIsLoadingWeightLogs] = useState(false);
+  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
+  const [editingWeightLog, setEditingWeightLog] = useState<WeightLogItem | null>(null);
+  const [retroactiveDate, setRetroactiveDate] = useState<string | undefined>(undefined);
+  const [isWeightHistoryOpen, setIsWeightHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    if (propHasActiveMesocycle !== undefined) {
+      setHasActiveMeso(propHasActiveMesocycle);
+    } else if (isEditMode) {
+      apiClient.mesocycles
+        .getCurrent()
+        .then((meso) => {
+          if (meso && meso.status === 'active') {
+            setHasActiveMeso(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [propHasActiveMesocycle, isEditMode]);
+
+  const loadWeightLogs = async () => {
+    setIsLoadingWeightLogs(true);
+    try {
+      const logs = await fetchWeightLogs();
+      setWeightLogs(logs);
+      if (logs.length > 0 && logs[0]) {
+        setWeightKg(String(logs[0].weight_kg));
+      }
+    } catch {
+      // Offline or empty
+    } finally {
+      setIsLoadingWeightLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isEditMode) {
+      loadWeightLogs();
+    }
+  }, [isEditMode]);
+
+  const handleSaveWeight = async (data: { weight_kg: number; logged_date: string; id?: string }) => {
+    if (data.id) {
+      await updateWeightLog(data.id, { weight_kg: data.weight_kg });
+    } else {
+      await createWeightLog({ weight_kg: data.weight_kg, logged_date: data.logged_date });
+    }
+    setWeightKg(String(data.weight_kg));
+    await loadWeightLogs();
+    await queryClient.invalidateQueries({ queryKey: ['weight-logs'] });
+    await queryClient.invalidateQueries({ queryKey: ['profile'] });
+    setIsWeightModalOpen(false);
+    setEditingWeightLog(null);
+    setRetroactiveDate(undefined);
+  };
+
+  const handleDaySelect = (day: number) => {
+    if (isEditMode && hasActiveMeso && day !== initialSavedDays) {
+      setPendingDays(day);
+      setIsAvailabilityModalOpen(true);
+      return;
+    }
+    setAvailableDays(day);
+  };
 
   useEffect(() => {
     if (currentProfile) {
@@ -71,6 +156,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       setExperienceLevel(currentProfile.experience_level ?? 'intermedio');
       setTrainingGoal(currentProfile.training_goal ?? 'hipertrofia');
       setAvailableDays(currentProfile.available_days_per_week ?? 4);
+      setInitialSavedDays(currentProfile.available_days_per_week ?? 4);
       setEquipmentIds(currentProfile.equipment?.map((e) => e.id) ?? []);
     }
   }, [currentProfile]);
@@ -298,22 +384,99 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 helperText={isEditMode ? 'Edad registrada' : 'Mínimo 16 años'}
               />
 
-              <Input
-                label="Peso corporal (kg)"
-                id="weight"
-                type="number"
-                step="0.1"
-                placeholder="75.0"
-                value={weightKg}
-                onChange={(e) => {
-                  setWeightKg(e.target.value);
-                  if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
-                }}
-                error={errors.weight}
-              />
+              {!isEditMode && (
+                <Input
+                  label="Peso corporal (kg)"
+                  id="weight"
+                  type="number"
+                  step="0.1"
+                  placeholder="75.0"
+                  value={weightKg}
+                  onChange={(e) => {
+                    setWeightKg(e.target.value);
+                    if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
+                  }}
+                  error={errors.weight}
+                />
+              )}
             </div>
           </div>
         </Card>
+
+        {/* Sección: Control de Peso Corporal e Historial (RF-01, RF-02) */}
+        {isEditMode && (
+          <Card title="Peso Corporal e Historial">
+            <div className="flex flex-col gap-3 pt-1 w-full">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-border-subtle">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                    <Scale className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-content-secondary">Peso más reciente</span>
+                    <span className="text-sm font-bold text-content-primary">
+                      {weightKg ? `${parseFloat(weightKg).toFixed(1)} kg` : 'Sin registrar'}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setEditingWeightLog(null);
+                    setRetroactiveDate(undefined);
+                    setIsWeightModalOpen(true);
+                  }}
+                  className="min-h-[48px] touch-target text-xs font-semibold"
+                >
+                  + Registrar pesaje
+                </Button>
+              </div>
+
+              {/* Botón para alternar historial de pesajes */}
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                fullWidth
+                onClick={() => setIsWeightHistoryOpen(!isWeightHistoryOpen)}
+                className="min-h-[48px] touch-target flex items-center justify-between text-xs"
+              >
+                <span>{isWeightHistoryOpen ? 'Ocultar historial de pesajes' : 'Ver historial de pesajes'}</span>
+                <span className="text-[11px] text-content-secondary">
+                  ({weightLogs.length} {weightLogs.length === 1 ? 'registro' : 'registros'})
+                </span>
+              </Button>
+
+              {/* Lista cronológica con deltas y semanas vacías (TASK-33) */}
+              {isWeightHistoryOpen && (
+                <div className="pt-1 w-full">
+                  <WeightHistoryList
+                    logs={weightLogs}
+                    isLoading={isLoadingWeightLogs}
+                    onEditLog={(log) => {
+                      setEditingWeightLog(log);
+                      setRetroactiveDate(undefined);
+                      setIsWeightModalOpen(true);
+                    }}
+                    onLogRetroactive={(date) => {
+                      setEditingWeightLog(null);
+                      setRetroactiveDate(date);
+                      setIsWeightModalOpen(true);
+                    }}
+                    onAddNewLog={() => {
+                      setEditingWeightLog(null);
+                      setRetroactiveDate(undefined);
+                      setIsWeightModalOpen(true);
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
 
         {/* Nivel de Experiencia: Apilado vertical en 1 columna (RF-11) */}
         <Card title="Nivel de experiencia">
@@ -403,7 +566,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <button
                   key={day}
                   type="button"
-                  onClick={() => setAvailableDays(day)}
+                  onClick={() => handleDaySelect(day)}
                   className={`touch-target min-h-[48px] min-w-[48px] flex-1 rounded-xl flex items-center justify-center font-bold text-sm border transition-all ${
                     isSelected
                       ? 'bg-brand-primary text-brand-contrast border-brand-primary shadow-md'
@@ -556,6 +719,102 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
       </Modal>
+
+      {/* Modal de Advertencia de Cambio de Disponibilidad con Ciclo Activo (RF-09 CA-09.1) */}
+      <Modal
+        isOpen={isAvailabilityModalOpen}
+        onClose={() => {
+          setIsAvailabilityModalOpen(false);
+          setPendingDays(null);
+        }}
+        title="Modificación de disponibilidad"
+        description="Atención: Mesociclo activo en curso"
+        footer={
+          <div className="flex flex-col gap-2 w-full">
+            <Button
+              variant="destructive"
+              size="lg"
+              fullWidth
+              onClick={() => {
+                setIsAvailabilityModalOpen(false);
+                if (onCancelActiveMesocycle) {
+                  onCancelActiveMesocycle();
+                } else {
+                  setIsCancelModalOpen(true);
+                }
+              }}
+              className="min-h-[48px] touch-target"
+            >
+              Cancelar mesociclo actual
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="md"
+              fullWidth
+              onClick={() => {
+                if (pendingDays !== null) {
+                  setAvailableDays(pendingDays);
+                }
+                setIsAvailabilityModalOpen(false);
+              }}
+              className="min-h-[48px] touch-target"
+            >
+              Aplicar para el próximo ciclo
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="md"
+              fullWidth
+              onClick={() => {
+                setIsAvailabilityModalOpen(false);
+                setPendingDays(null);
+              }}
+              className="min-h-[48px] touch-target text-content-secondary"
+            >
+              Mantener días actuales
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-3 py-1 text-xs">
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              Una rutina en curso no admite modificaciones estructurales globales en sus días o tiempos de entrenamiento. Te recomendamos cancelar el ciclo actual para generar uno nuevo con los parámetros actualizados.
+            </p>
+          </div>
+
+          <p className="text-content-secondary leading-relaxed">
+            Al cancelar el mesociclo actual, las sesiones y cargas ya completadas se preservarán intactas en tu historial para calibrar tu nuevo ciclo.
+          </p>
+        </div>
+      </Modal>
+
+      {/* Cancellation Modal Fallback */}
+      <CancellationModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onCancelSuccess={() => {
+          setHasActiveMeso(false);
+          onCancelActiveMesocycle?.();
+        }}
+      />
+
+      {/* Modal de Registro y Edición de Peso Corporal (RF-01, RF-02) */}
+      <WeightLogModal
+        isOpen={isWeightModalOpen}
+        onClose={() => {
+          setIsWeightModalOpen(false);
+          setEditingWeightLog(null);
+          setRetroactiveDate(undefined);
+        }}
+        onSave={handleSaveWeight}
+        initialLog={editingWeightLog}
+        initialDate={retroactiveDate}
+        existingLogs={weightLogs}
+      />
     </div>
   );
 };

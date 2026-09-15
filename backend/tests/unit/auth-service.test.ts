@@ -7,6 +7,7 @@ import { NotFoundError, UnauthorizedError } from '../../src/errors/app-error.js'
 describe('TASK-22: AuthService', () => {
   let mockRepo: Partial<AthleteRepository>;
   let mockVerifyGoogleToken: ReturnType<typeof vi.fn>;
+  let mockExchangeCode: ReturnType<typeof vi.fn>;
   let service: AuthService;
 
   const sampleAthlete: AthleteProfile = {
@@ -33,7 +34,8 @@ describe('TASK-22: AuthService', () => {
       findByEmail: vi.fn()
     };
     mockVerifyGoogleToken = vi.fn();
-    service = new AuthService(mockRepo as AthleteRepository, mockVerifyGoogleToken);
+    mockExchangeCode = vi.fn().mockImplementation(async (code: string) => code);
+    service = new AuthService(mockRepo as AthleteRepository, mockVerifyGoogleToken as any, mockExchangeCode as any);
   });
 
   describe('handleGoogleAuth', () => {

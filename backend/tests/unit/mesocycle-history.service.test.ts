@@ -279,7 +279,7 @@ describe('TASK-18: MesocycleHistoryService (RF-06)', () => {
       const athleteId = 'athlete-123';
       const mesocycleId = 'meso-cancelled-1';
 
-      (mockPool.query as any).mockImplementation(async (sql: string, params: any[]) => {
+      (mockPool.query as any).mockImplementation(async (sql: string, _params: any[]) => {
         if (sql.includes('FROM mesocycle')) {
           return {
             rows: [

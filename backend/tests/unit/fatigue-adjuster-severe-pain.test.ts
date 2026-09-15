@@ -6,7 +6,7 @@ import {
   type SeverePainExclusionParams,
   type SessionPlanAdjustmentParams
 } from '../../src/services/fatigue-adjuster.service.js';
-import type { Joint, MovementPattern, PainIntensity, Exercise } from '../../src/schemas/generated/schemas.js';
+import type { Exercise } from '../../src/schemas/generated/schemas.js';
 
 describe('FatigueAdjusterService - Severe Pain Exclusion and Safe Substitution (TASK-48, RF-08, CA-08.1, CA-08.3, CA-08.5, D-20)', () => {
   const service = new FatigueAdjusterService();
