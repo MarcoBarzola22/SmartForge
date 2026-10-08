@@ -109,6 +109,23 @@ describe('T-16: MobileLayout.tsx con safe-areas y ajuste dinámico (RF-02, RF-03
       expect(toastContainer.className).toContain('bottom-[76px]');
       expect(screen.getByTestId('custom-toast')).toBeInTheDocument();
     });
+
+    it('aplica padding inferior dinámico (pb-56 en sesión activa, pb-28 por defecto)', () => {
+      const { rerender } = render(
+        <MobileLayout activeTab="routine">
+          <div>Contenido</div>
+        </MobileLayout>
+      );
+      const main = screen.getByRole('main');
+      expect(main.className).toContain('pb-28');
+
+      rerender(
+        <MobileLayout activeTab="session">
+          <div>Contenido</div>
+        </MobileLayout>
+      );
+      expect(main.className).toContain('pb-56');
+    });
   });
 
   describe('2. Conmutación dinámica de BottomNav y KeyboardActionBar ante teclado virtual (RF-03, CF-04)', () => {

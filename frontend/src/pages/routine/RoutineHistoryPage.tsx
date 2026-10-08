@@ -71,7 +71,7 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
   return (
     <div
       data-testid="routine-history-container"
-      className={`w-full max-w-[390px] mx-auto flex flex-col gap-4 pb-8 overflow-x-hidden text-zinc-100 ${className}`}
+      className={`w-full max-w-[390px] mx-auto flex flex-col gap-4 pb-8 overflow-x-hidden text-content ${className}`}
     >
       {/* Top Header */}
       <header className="flex items-center gap-3 pt-2">
@@ -80,19 +80,19 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
             type="button"
             onClick={onBack}
             aria-label="Volver"
-            className="touch-target min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
+            className="press touch-target min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl bg-surface-1 border border-line text-content-2 hover:text-content hover:bg-surface-2 transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
         )}
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <History className="w-5 h-5 text-amber-400 shrink-0" />
-            <h1 className="text-lg font-bold text-zinc-100 tracking-tight truncate">
+            <History className="w-5 h-5 text-amber shrink-0" />
+            <h1 className="text-lg font-extrabold text-content tracking-tight truncate">
               Historial de Mesociclos
             </h1>
           </div>
-          <span className="text-xs text-zinc-400 font-medium truncate">
+          <span className="text-xs text-content-3 font-medium truncate">
             Evolución y registro histórico de cargas
           </span>
         </div>
@@ -103,10 +103,10 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
         <button
           type="button"
           onClick={() => setActiveFilter('all')}
-          className={`touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 border transition-all ${
+          className={`press touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 border transition-all ${
             activeFilter === 'all'
-              ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md font-bold'
-              : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700'
+              ? 'bg-amber text-ink border-amber shadow-lg shadow-amber/30'
+              : 'bg-surface-1 text-content-2 border border-line hover:border-line/80'
           }`}
         >
           Todos ({history.length})
@@ -115,10 +115,10 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
         <button
           type="button"
           onClick={() => setActiveFilter('completed')}
-          className={`touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 border transition-all flex items-center gap-1.5 ${
+          className={`press touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 border transition-all flex items-center gap-1.5 ${
             activeFilter === 'completed'
-              ? 'bg-emerald-500 text-zinc-950 border-emerald-400 shadow-md font-bold'
-              : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700'
+              ? 'bg-emerald-500 text-ink border-emerald-400 shadow-lg shadow-emerald-500/30'
+              : 'bg-surface-1 text-content-2 border border-line hover:border-line/80'
           }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -128,10 +128,10 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
         <button
           type="button"
           onClick={() => setActiveFilter('cancelled')}
-          className={`touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 border transition-all flex items-center gap-1.5 ${
+          className={`press touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 border transition-all flex items-center gap-1.5 ${
             activeFilter === 'cancelled'
-              ? 'bg-red-500 text-zinc-950 border-red-400 shadow-md font-bold'
-              : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700'
+              ? 'bg-red-500 text-white border-red-400 shadow-lg shadow-red-500/30'
+              : 'bg-surface-1 text-content-2 border border-line hover:border-line/80'
           }`}
         >
           <XCircle className="w-3.5 h-3.5 text-red-400" />
@@ -143,9 +143,9 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
       {error && (
         <div
           role="alert"
-          className="p-3.5 rounded-xl bg-red-950/40 border border-red-800/60 text-red-200 text-xs flex items-center gap-2"
+          className="p-3.5 rounded-xl bg-fatigue/15 border border-fatigue/30 text-fatigue-text text-xs flex items-center gap-2"
         >
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <AlertCircle className="w-4 h-4 text-fatigue-text shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -156,24 +156,24 @@ export const RoutineHistoryPage: React.FC<RoutineHistoryPageProps> = ({
           data-testid="history-loading-state"
           className="flex flex-col gap-3 animate-pulse"
         >
-          <div className="h-32 bg-zinc-900 rounded-2xl border border-zinc-800" />
-          <div className="h-32 bg-zinc-900 rounded-2xl border border-zinc-800" />
-          <div className="h-32 bg-zinc-900 rounded-2xl border border-zinc-800" />
+          <div className="h-32 bg-surface-1 rounded-2xl border border-line" />
+          <div className="h-32 bg-surface-1 rounded-2xl border border-line" />
+          <div className="h-32 bg-surface-1 rounded-2xl border border-line" />
         </div>
       ) : filteredHistory.length === 0 ? (
         /* Empty state */
         <div
           data-testid="history-empty-state"
-          className="w-full p-8 rounded-2xl bg-zinc-950 border border-zinc-800 flex flex-col items-center text-center gap-3"
+          className="w-full p-8 rounded-2xl bg-surface-1 border border-line flex flex-col items-center text-center gap-3 shadow-lg shadow-brand/5"
         >
-          <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-500">
+          <div className="w-12 h-12 rounded-2xl bg-surface-2 border border-line flex items-center justify-center text-content-3">
             <History className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-zinc-200">
+            <h3 className="text-sm font-bold text-content">
               Sin mesociclos en el historial
             </h3>
-            <p className="text-xs text-zinc-400 mt-1 max-w-xs leading-relaxed">
+            <p className="text-xs text-content-2 mt-1 max-w-xs leading-relaxed">
               {activeFilter === 'all'
                 ? 'Aún no has completado ni cancelado ningún mesociclo. Tus ciclos finalizados aparecerán aquí.'
                 : 'No hay mesociclos registrados para este filtro.'}

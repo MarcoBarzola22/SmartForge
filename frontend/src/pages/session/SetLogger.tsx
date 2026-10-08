@@ -8,13 +8,9 @@ import type {
   UpdateSetLogRequest
 } from '../../api';
 import {
-  Plus,
-  Minus,
-  CheckCircle2,
+  Check,
   Trash2,
   Edit2,
-  Dumbbell,
-  Repeat,
   Flame,
   Target
 } from 'lucide-react';
@@ -128,22 +124,15 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
     }
   };
 
-  const RIR_OPTIONS = [
-    { value: 0, label: '0 (Fallo)', desc: 'Sin reps de reserva' },
-    { value: 1, label: '1', desc: '1 rep en recámara' },
-    { value: 2, label: '2', desc: '2 reps en recámara' },
-    { value: 3, label: '3', desc: '3 reps en recámara' },
-    { value: 4, label: '4', desc: '4 reps en recámara' },
-    { value: 5, label: '5', desc: '5+ reps' }
-  ];
+  const RIR_OPTIONS = [0, 1, 2, 3, 4];
 
   return (
     <div className={`flex flex-col gap-4 w-full min-w-0 ${className}`}>
       {/* Target Prescription Header (CA-05.1) */}
-      <Card className="w-full min-w-0">
+      <Card className="w-full min-w-0 bg-surface-1 border-line rounded-2xl shadow-lg shadow-brand/5">
         <div className="flex flex-col gap-2 w-full min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 truncate">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber truncate">
               Prescripción del Ejercicio
             </span>
             <Badge variant="amber" size="sm" className="shrink-0">
@@ -151,86 +140,87 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
             </Badge>
           </div>
 
-          <h3 className="text-base font-bold text-zinc-100 leading-snug break-words">
+          <h3 className="text-base font-bold text-content leading-snug break-words">
             {exerciseName}
           </h3>
 
-          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-zinc-300 w-full">
-            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 shrink-0">
-              <Target className="w-3.5 h-3.5 text-amber-400" />
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-content-2 w-full">
+            <div className="flex items-center gap-1.5 bg-surface-2 px-2.5 py-1 rounded-xl border border-line shrink-0">
+              <Target className="w-3.5 h-3.5 text-amber" />
               <span>
                 Objetivo: {targetSets} × {targetReps} reps @ {targetLoadKg} kg
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800 shrink-0">
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <div className="flex items-center gap-1.5 bg-surface-2 px-2.5 py-1 rounded-xl border border-line shrink-0">
+              <Flame className="w-3.5 h-3.5 text-amber" />
               <span>RIR Objetivo: {targetRir}</span>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Touch-Optimized Set Input Area (RNF-01, CA-05.2, CA-05.5) */}
+      {/* Touch-Optimized Set Input Area (Lovable Stepper and RIR layout) */}
       <Card 
         title={editingSet ? `Editar Serie ${editingSet.set_number}` : `Registrar Serie ${nextSetNumber}`}
-        className="w-full min-w-0"
+        className="w-full min-w-0 bg-surface-1 border-line rounded-2xl shadow-lg shadow-brand/5"
       >
         <div className="flex flex-col gap-4 pt-1 w-full min-w-0">
-          {/* 1. Control de Peso (kg) */}
+          {/* 1. Control de Carga (kg) con Stepper */}
           <div className="flex flex-col gap-2 w-full min-w-0">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="set-weight"
-                className="text-xs font-bold text-zinc-300 flex items-center gap-1.5"
-              >
-                <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
-                Peso (kg)
-              </label>
-              <span className="text-xs font-mono font-bold text-amber-300">
-                {weightKg} kg
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 w-full">
-              <button
-                type="button"
-                aria-label="Disminuir peso 1 kg"
-                onClick={() => adjustWeight(-1)}
-                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-
-              <input
-                id="set-weight"
-                type="number"
-                step="0.5"
-                min="0"
-                value={weightKg}
-                onChange={(e) => setWeightKg(Math.max(0, parseFloat(e.target.value) || 0))}
-                className="flex-1 min-w-0 h-12 bg-zinc-950 border border-zinc-800 rounded-xl text-center text-lg font-bold text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              />
-
-              <button
-                type="button"
-                aria-label="Aumentar peso 1 kg"
-                onClick={() => adjustWeight(1)}
-                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+            <div className="rounded-xl bg-surface-2 p-3 text-left select-none w-full">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="set-weight"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-content-2"
+                >
+                  Peso (kg)
+                </label>
+                <span className="font-mono text-xs font-bold text-neon">
+                  {weightKg} kg
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Disminuir peso 1 kg"
+                  onClick={() => adjustWeight(-1)}
+                  className="press grid h-12 w-12 place-items-center rounded-xl border border-line-strong bg-surface-1 text-content touch-target transition-all"
+                >
+                  <span className="text-xl font-bold">−</span>
+                </button>
+                <div className="flex items-center justify-center">
+                  <input
+                    id="set-weight"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(Math.max(0, parseFloat(e.target.value) || 0))}
+                    className="w-24 text-center font-mono text-2xl font-bold text-content bg-transparent border-0 focus:outline-none"
+                  />
+                  <span className="ml-1 text-[11px] font-normal text-content-2">kg</span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Aumentar peso 1 kg"
+                  onClick={() => adjustWeight(1)}
+                  className="press grid h-12 w-12 place-items-center rounded-xl border border-line-strong bg-surface-1 text-content touch-target transition-all"
+                >
+                  <span className="text-xl font-bold">+</span>
+                </button>
+              </div>
             </div>
 
             {/* Botones de ajuste rápido de peso */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+            <div className="grid grid-cols-4 gap-2 w-full">
               {[-5, -2.5, 2.5, 5].map((delta) => (
                 <button
                   key={delta}
                   type="button"
                   aria-label={`${delta > 0 ? '+' : ''}${delta} kg`}
                   onClick={() => adjustWeight(delta)}
-                  className="touch-target min-h-[48px] h-12 w-full py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all flex items-center justify-center"
+                  className="press touch-target min-h-[48px] h-12 w-full py-1.5 rounded-xl bg-surface-2 border border-line text-xs font-bold text-content hover:border-line-strong active:scale-95 transition-all flex items-center justify-center"
                 >
                   {delta > 0 ? `+${delta}` : delta}
                 </button>
@@ -238,59 +228,60 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
             </div>
           </div>
 
-          {/* 2. Control de Repeticiones */}
+          {/* 2. Control de Repeticiones con Stepper */}
           <div className="flex flex-col gap-2 w-full min-w-0">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="set-reps"
-                className="text-xs font-bold text-zinc-300 flex items-center gap-1.5"
-              >
-                <Repeat className="w-3.5 h-3.5 text-amber-400" />
-                Repeticiones
-              </label>
-              <span className="text-xs font-mono font-bold text-amber-300">
-                {reps} reps
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 w-full">
-              <button
-                type="button"
-                aria-label="Disminuir 1 repetición"
-                onClick={() => adjustReps(-1)}
-                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-
-              <input
-                id="set-reps"
-                type="number"
-                min="1"
-                value={reps}
-                onChange={(e) => setReps(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="flex-1 min-w-0 h-12 bg-zinc-950 border border-zinc-800 rounded-xl text-center text-lg font-bold text-zinc-100 font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              />
-
-              <button
-                type="button"
-                aria-label="Aumentar 1 repetición"
-                onClick={() => adjustReps(1)}
-                className="h-12 w-12 shrink-0 flex-shrink-0 touch-target min-h-[48px] min-w-[48px] rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:bg-zinc-900 active:scale-95 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+            <div className="rounded-xl bg-surface-2 p-3 text-left select-none w-full">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="set-reps"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-content-2"
+                >
+                  Repeticiones
+                </label>
+                <span className="font-mono text-xs font-bold text-neon">
+                  {reps} reps
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Disminuir 1 repetición"
+                  onClick={() => adjustReps(-1)}
+                  className="press grid h-12 w-12 place-items-center rounded-xl border border-line-strong bg-surface-1 text-content touch-target transition-all"
+                >
+                  <span className="text-xl font-bold">−</span>
+                </button>
+                <div className="flex items-center justify-center">
+                  <input
+                    id="set-reps"
+                    type="number"
+                    min="1"
+                    value={reps}
+                    onChange={(e) => setReps(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-20 text-center font-mono text-2xl font-bold text-content bg-transparent border-0 focus:outline-none"
+                  />
+                  <span className="ml-1 text-[11px] font-normal text-content-2">reps</span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Aumentar 1 repetición"
+                  onClick={() => adjustReps(1)}
+                  className="press grid h-12 w-12 place-items-center rounded-xl border border-line-strong bg-surface-1 text-content touch-target transition-all"
+                >
+                  <span className="text-xl font-bold">+</span>
+                </button>
+              </div>
             </div>
 
             {/* Botones de ajuste rápido de reps */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+            <div className="grid grid-cols-4 gap-2 w-full">
               {[-2, -1, 1, 2].map((delta) => (
                 <button
                   key={delta}
                   type="button"
                   aria-label={`${delta > 0 ? '+' : ''}${delta} rep`}
                   onClick={() => adjustReps(delta)}
-                  className="touch-target min-h-[48px] h-12 w-full py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white active:scale-95 transition-all flex items-center justify-center"
+                  className="press touch-target min-h-[48px] h-12 w-full py-1.5 rounded-xl bg-surface-2 border border-line text-xs font-bold text-content hover:border-line-strong active:scale-95 transition-all flex items-center justify-center"
                 >
                   {delta > 0 ? `+${delta}` : delta}
                 </button>
@@ -298,38 +289,35 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
             </div>
           </div>
 
-          {/* 3. Selector de RIR (0 a 5) */}
+          {/* 3. Selector de RIR (cuadrícula de 5 columnas con botones redondeados de Lovable) */}
           <div className="flex flex-col gap-2 w-full min-w-0">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
-                RIR (Repeticiones en reserva)
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-content-2 flex items-center gap-1.5">
+                <Flame className="w-3.5 h-3.5 text-amber" />
+                RIR (reps en reserva)
               </span>
-              <span className="text-xs font-mono font-bold text-amber-300">
+              <span className="font-mono text-xs font-bold text-amber">
                 RIR {rir}
               </span>
             </div>
 
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 w-full">
-              {RIR_OPTIONS.map((opt) => {
-                const isSelected = rir === opt.value;
+            <div className="grid grid-cols-5 gap-2 w-full">
+              {RIR_OPTIONS.map((val) => {
+                const isSelected = rir === val;
                 return (
                   <button
-                    key={opt.value}
+                    key={val}
                     type="button"
-                    aria-label={`RIR ${opt.value}`}
+                    aria-label={`RIR ${val}`}
                     aria-pressed={isSelected}
-                    onClick={() => setRir(opt.value)}
-                    className={`touch-target min-h-[48px] h-12 w-full p-1 rounded-xl text-xs font-bold border transition-all flex flex-col items-center justify-center ${
+                    onClick={() => setRir(val)}
+                    className={`press touch-target min-h-[48px] h-12 rounded-full font-mono text-sm font-bold transition-all duration-200 flex items-center justify-center select-none ${
                       isSelected
-                        ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/20'
-                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                        ? 'bg-brand text-content shadow-lg shadow-brand/30 ring-2 ring-brand-focus'
+                        : 'bg-surface-2 text-content-2 hover:text-content'
                     }`}
                   >
-                    <span className="text-sm font-bold leading-tight">{opt.value}</span>
-                    <span className="text-[9px] font-normal leading-tight truncate">
-                      {opt.value === 0 ? 'Fallo' : `RIR ${opt.value}`}
-                    </span>
+                    {val === 4 ? '4+' : val}
                   </button>
                 );
               })}
@@ -338,22 +326,21 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
         </div>
       </Card>
 
-      {/* Botón Grande de Confirmación (1 toque si acepta pre-carga, CA-05.2) */}
+      {/* Botón Maestro Grande de Confirmación (estilo Lovable: bg-success text-ink font-extrabold shadow-success/30) */}
       <div className="sticky bottom-4 z-20 flex flex-col gap-2 w-full min-w-0">
-        <Button
+        <button
           type="button"
-          variant="primary"
-          size="lg"
-          fullWidth
-          isLoading={isSubmitting || isLoading}
+          disabled={isSubmitting || isLoading}
           onClick={handleConfirmSet}
-          iconLeft={<CheckCircle2 className="w-5 h-5" />}
-          className="shadow-2xl min-h-[52px] h-14 w-full"
+          className="press flex min-h-14 w-full items-center justify-center gap-2 rounded-xl bg-success text-ink font-extrabold shadow-lg shadow-success/30 touch-target select-none disabled:opacity-50"
         >
-          {editingSet
-            ? `Guardar Serie ${editingSet.set_number}`
-            : `Registrar Serie ${nextSetNumber}`}
-        </Button>
+          <Check className="h-5 w-5 stroke-[3]" />
+          <span>
+            {editingSet
+              ? `Guardar Serie ${editingSet.set_number}`
+              : `Registrar Serie ${nextSetNumber}`}
+          </span>
+        </button>
 
         {editingSet && (
           <Button
@@ -362,46 +349,46 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
             size="md"
             fullWidth
             onClick={handleCancelEdit}
-            className="min-h-[48px] h-12 w-full"
+            className="min-h-[48px] h-12 w-full rounded-xl bg-surface-2 text-content-2 hover:text-content"
           >
             Cancelar edición
           </Button>
         )}
       </div>
 
-      {/* Lista de Series Completadas (CA-05.4) */}
+      {/* Lista de Series Completadas (estilo Lovable: filas min-h-12 bg-success/10 con checkmark verde) */}
       {completedSets.length > 0 && (
-        <Card title="Series Completadas" subtitle={`${completedSets.length} de ${targetSets} series`} className="w-full min-w-0">
-          <div className="flex flex-col gap-2 pt-1 w-full min-w-0">
+        <Card
+          title="Series Completadas"
+          subtitle={`${completedSets.length} de ${targetSets} series`}
+          className="w-full min-w-0 bg-surface-1 border-line rounded-2xl shadow-lg shadow-brand/5"
+        >
+          <div className="flex flex-col gap-2.5 pt-1 w-full min-w-0">
             {completedSets.map((set) => (
               <div
                 key={set.id || set.set_number}
-                className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between text-xs w-full min-w-0"
+                className="animate-in fade-in slide-in-from-bottom-2 duration-200 flex min-h-12 items-center gap-3 rounded-2xl border border-success/30 bg-success/10 px-3.5 py-2 w-full min-w-0"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span className="w-6 h-6 rounded-lg bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-                    {set.set_number}
+                <span className="grid h-8 w-8 place-items-center rounded-full bg-success text-ink shrink-0 font-bold">
+                  <Check className="h-4 w-4 stroke-[3]" />
+                </span>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-bold text-content-2">
+                    Serie {set.set_number}
                   </span>
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-zinc-400 truncate">
-                      Serie {set.set_number}
-                    </span>
-                    <span className="font-bold text-zinc-100 font-mono truncate">
-                      {set.weight_kg} kg × {set.reps_completed} reps
-                    </span>
-                    <span className="text-[10px] text-zinc-400 truncate">
-                      RIR {set.rir}
-                    </span>
-                  </div>
+                  <span className="font-mono text-sm font-bold text-content truncate">
+                    {set.weight_kg} kg × {set.reps_completed} reps · RIR {set.rir}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0 ml-2">
+                <div className="flex items-center gap-1 shrink-0 ml-auto">
                   {onUpdateSet && (
                     <button
                       type="button"
                       aria-label={`Editar serie ${set.set_number}`}
                       onClick={() => handleStartEdit(set)}
-                      className="touch-target h-12 w-12 min-h-[48px] min-w-[48px] p-2 text-zinc-400 hover:text-amber-400 transition-colors flex items-center justify-center shrink-0"
+                      className="press touch-target h-10 w-10 min-h-[40px] min-w-[40px] p-2 text-content-2 hover:text-amber transition-colors flex items-center justify-center rounded-xl hover:bg-surface-2"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -412,7 +399,7 @@ export const SetLogger: React.FC<SetLoggerProps> = ({
                       type="button"
                       aria-label={`Eliminar serie ${set.set_number}`}
                       onClick={() => onDeleteSet(set.id)}
-                      className="touch-target h-12 w-12 min-h-[48px] min-w-[48px] p-2 text-zinc-400 hover:text-red-400 transition-colors flex items-center justify-center shrink-0"
+                      className="press touch-target h-10 w-10 min-h-[40px] min-w-[40px] p-2 text-content-2 hover:text-fatigue-text transition-colors flex items-center justify-center rounded-xl hover:bg-surface-2"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

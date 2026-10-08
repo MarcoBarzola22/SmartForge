@@ -77,13 +77,13 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="bottom"
-        className="max-h-[85vh] flex flex-col p-0 overflow-hidden bg-surface-1 border-t border-border-interactive select-none"
+        className="max-h-[85vh] flex flex-col p-0 overflow-hidden bg-surface-1 border-t border-line rounded-t-3xl shadow-2xl select-none"
       >
         {/* Header del Sheet */}
-        <SheetHeader className="p-4 border-b border-border-subtle flex flex-row items-center justify-between">
+        <SheetHeader className="p-4 border-b border-line flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-brand-primary" />
-            <SheetTitle className="text-base font-bold text-content-primary">
+            <Filter className="w-5 h-5 text-amber" />
+            <SheetTitle className="text-base font-extrabold text-content">
               Filtros de Catálogo
             </SheetTitle>
           </div>
@@ -92,18 +92,18 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
             type="button"
             onClick={handleReset}
             aria-label="Restablecer filtros"
-            className="text-xs text-content-secondary hover:text-content-primary flex items-center gap-1 touch-target min-h-[48px] px-2"
+            className="press touch-target min-h-[48px] px-2 text-xs font-semibold text-content-2 hover:text-content flex items-center gap-1 transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Restablecer</span>
           </button>
         </SheetHeader>
 
-        {/* Lista vertical scrolleable (Cero scroll horizontal) */}
+        {/* Lista vertical scrolleable (Cero scroll horizontal, T-18) */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-5 w-full">
           {/* Sección 1: Grupos Musculares */}
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-content-3 uppercase tracking-wider">
               Grupo Muscular
             </span>
             <div className="flex flex-col gap-2 w-full">
@@ -117,14 +117,14 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                     aria-pressed={isSelected}
                     onClick={() => setSelectedMuscle(opt.id)}
                     className={cn(
-                      'w-full touch-target min-h-[48px] px-4 py-3 rounded-xl border text-sm font-medium transition-all flex items-center justify-between text-left select-none',
+                      'press touch-target min-h-[48px] px-4 py-3 rounded-2xl border text-sm font-semibold transition-all flex items-center justify-between text-left select-none w-full',
                       isSelected
-                        ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold shadow-sm'
-                        : 'bg-surface-2 border-border-interactive text-content-primary hover:bg-surface-3'
+                        ? 'bg-amber/15 border-amber text-content font-bold shadow-lg shadow-amber/10'
+                        : 'bg-surface-2 border-line text-content-2 hover:border-line'
                     )}
                   >
                     <span>{opt.label}</span>
-                    {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
+                    {isSelected && <Check className="w-4 h-4 text-amber shrink-0 stroke-[3]" />}
                   </button>
                 );
               })}
@@ -133,7 +133,7 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
 
           {/* Sección 2: Patrones de Movimiento */}
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-bold text-content-secondary uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-content-3 uppercase tracking-wider">
               Patrón de Movimiento
             </span>
             <div className="flex flex-col gap-2 w-full">
@@ -147,14 +147,14 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                     aria-pressed={isSelected}
                     onClick={() => setSelectedPattern(opt.id)}
                     className={cn(
-                      'w-full touch-target min-h-[48px] px-4 py-3 rounded-xl border text-sm font-medium transition-all flex items-center justify-between text-left select-none',
+                      'press touch-target min-h-[48px] px-4 py-3 rounded-2xl border text-sm font-semibold transition-all flex items-center justify-between text-left select-none w-full',
                       isSelected
-                        ? 'bg-brand-primary/10 border-brand-primary text-brand-primary font-bold shadow-sm'
-                        : 'bg-surface-2 border-border-interactive text-content-primary hover:bg-surface-3'
+                        ? 'bg-amber/15 border-amber text-content font-bold shadow-lg shadow-amber/10'
+                        : 'bg-surface-2 border-line text-content-2 hover:border-line'
                     )}
                   >
                     <span>{opt.label}</span>
-                    {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
+                    {isSelected && <Check className="w-4 h-4 text-amber shrink-0 stroke-[3]" />}
                   </button>
                 );
               })}
@@ -163,12 +163,12 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
         </div>
 
         {/* Zona Inferior Fija de Acción (Mitad inferior de pantalla) */}
-        <div className="p-4 border-t border-border-subtle bg-surface-1 flex items-center gap-3">
+        <div className="p-4 border-t border-line bg-surface-1 flex items-center gap-3">
           <Button
             type="button"
             variant="secondary"
             onClick={onClose}
-            className="flex-1 min-h-[48px] touch-target"
+            className="press flex-1 min-h-[48px] touch-target rounded-xl border-line"
           >
             Cancelar
           </Button>
@@ -177,7 +177,7 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
             type="button"
             variant="primary"
             onClick={handleApply}
-            className="flex-1 min-h-[48px] touch-target font-bold"
+            className="press flex-1 min-h-[48px] touch-target font-bold rounded-xl bg-brand text-content shadow-lg shadow-brand/30"
           >
             Aplicar filtros
           </Button>

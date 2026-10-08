@@ -82,7 +82,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           />
 
           {unitLabel && (
-            <div className="absolute right-3.5 pointer-events-none text-xs font-semibold text-content-secondary uppercase tracking-wider select-none">
+            <div className="absolute right-3.5 pointer-events-none text-xs font-semibold font-mono text-content-secondary uppercase tracking-wider select-none">
               {unitLabel}
             </div>
           )}

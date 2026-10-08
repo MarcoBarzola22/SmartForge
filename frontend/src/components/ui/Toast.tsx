@@ -54,11 +54,11 @@ export const Toast: React.FC<ToastProps> = ({
   };
 
   const styleMap = {
-    success: 'bg-surface-1 border-status-success/40 text-content-primary',
-    warning: 'bg-surface-1 border-status-warning/50 text-content-primary',
-    danger: 'bg-surface-1 border-status-error-bg/60 text-content-primary',
-    error: 'bg-surface-1 border-status-error-bg/60 text-content-primary',
-    info: 'bg-surface-1 border-border-interactive text-content-primary'
+    success: 'glass border-status-success/40 text-content-primary shadow-lg shadow-success/10',
+    warning: 'glass border-status-warning/50 text-content-primary shadow-lg shadow-amber/10',
+    danger: 'glass border-status-error-bg/60 text-content-primary shadow-lg',
+    error: 'glass border-status-error-bg/60 text-content-primary shadow-lg',
+    info: 'glass border-white/10 text-content-primary shadow-lg shadow-brand/10'
   };
 
   const retryHandler = action?.onClick || onRetry;
@@ -69,7 +69,7 @@ export const Toast: React.FC<ToastProps> = ({
       role={type === 'error' || type === 'danger' ? 'alert' : 'status'}
       aria-live="polite"
       className={cn(
-        "w-full max-w-[360px] mx-auto rounded-xl border p-3.5 shadow-xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 pointer-events-auto",
+        "w-full max-w-[360px] mx-auto rounded-2xl border p-3.5 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 pointer-events-auto",
         styleMap[type],
         isFloating && "fixed bottom-[76px] inset-x-0 z-50 w-[calc(100%-32px)]",
         className
@@ -95,7 +95,7 @@ export const Toast: React.FC<ToastProps> = ({
           <button
             type="button"
             onClick={retryHandler}
-            className="touch-target min-h-[48px] px-3 py-2 text-xs font-bold rounded-lg shrink-0 bg-surface-2 hover:bg-surface-2/80 text-brand-primary border border-brand-primary/40 transition-colors focus-visible:ring-2 focus-visible:ring-brand-focus select-none"
+            className="press touch-target min-h-[48px] px-3.5 py-2 text-xs font-bold rounded-xl shrink-0 bg-surface-2 hover:bg-surface-2/80 text-brand-primary border border-brand-primary/40 transition-all focus-visible:ring-2 focus-visible:ring-brand-focus select-none"
           >
             {actionText}
           </button>
@@ -106,7 +106,7 @@ export const Toast: React.FC<ToastProps> = ({
             type="button"
             aria-label="Cerrar notificación"
             onClick={onClose}
-            className="touch-target min-h-[48px] min-w-[48px] inline-flex items-center justify-center p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-surface-2 transition-colors select-none shrink-0"
+            className="press touch-target min-h-[48px] min-w-[48px] inline-flex items-center justify-center p-2 rounded-xl text-content-secondary hover:text-content-primary hover:bg-surface-2 transition-all select-none shrink-0"
           >
             <X className="w-4 h-4" />
           </button>

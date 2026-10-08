@@ -64,7 +64,7 @@ function SheetOverlay({ className, ...props }: SheetPrimitive.Backdrop.Props) {
     <SheetPrimitive.Backdrop
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/70 backdrop-blur-xs overscroll-contain transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/75 backdrop-blur-sm overscroll-contain transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
         className
       )}
       {...props}
@@ -118,7 +118,7 @@ function SheetContent({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-surface-1 text-content-primary shadow-xl overscroll-contain border-border-interactive transition-all duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0",
+          "fixed z-50 flex flex-col gap-4 bg-surface-1 text-content shadow-2xl overscroll-contain border-border-interactive border-line-strong transition-all duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0",
           side === "bottom" && [
             "inset-x-0 bottom-0 w-full max-w-[390px] mx-auto border-t rounded-t-2xl max-h-[90vh]",
             keyboardActive ? "h-full max-h-full rounded-none" : "h-auto",

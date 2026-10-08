@@ -85,5 +85,21 @@ describe('T-12: Rediseño de BottomNav.tsx con altura exacta de 64px y dianas de
       const sessionBadge = screen.getByTestId('active-session-dot');
       expect(sessionBadge).toBeInTheDocument();
     });
+
+    it('traslada suavemente el indicador superior deslizante al alternar pestañas', () => {
+      const { rerender } = render(<BottomNav activeTab="routine" onTabChange={vi.fn()} />);
+      const indicator = screen.getByTestId('bottom-nav-indicator');
+      expect(indicator).toBeInTheDocument();
+      expect(indicator.style.left).toBe('0%');
+
+      rerender(<BottomNav activeTab="session" onTabChange={vi.fn()} />);
+      expect(indicator.style.left).toBe('25%');
+
+      rerender(<BottomNav activeTab="catalog" onTabChange={vi.fn()} />);
+      expect(indicator.style.left).toBe('50%');
+
+      rerender(<BottomNav activeTab="profile" onTabChange={vi.fn()} />);
+      expect(indicator.style.left).toBe('75%');
+    });
   });
 });

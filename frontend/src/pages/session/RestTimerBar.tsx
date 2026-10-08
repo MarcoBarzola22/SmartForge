@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from 'cn';
-import { Timer, ArrowRight } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
 
 export interface RestTimerBarProps extends React.HTMLAttributes<HTMLDivElement> {
   initialSeconds?: number;
@@ -55,7 +53,7 @@ export const RestTimerBar: React.FC<RestTimerBarProps> = ({
   }, [secondsRemaining, isFinished]);
 
   const handleNextSetEarly = () => {
-    // Si el atleta pulsa siguiente serie antes de agotar el tiempo:
+    // Si el atleta pulsa siguiente serie / saltar antes de agotar el tiempo:
     // 1. Detener a 0
     setSecondsRemaining(0);
     setIsFinished(true);
@@ -79,75 +77,79 @@ export const RestTimerBar: React.FC<RestTimerBarProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const totalTime = initialSeconds > 0 ? initialSeconds : 90;
+  const progressRatio = Math.min(100, Math.max(0, (secondsRemaining / totalTime) * 100));
+
   return (
     <div
       data-testid="rest-timer-bar"
       role="region"
       aria-label="Temporizador de descanso"
       className={cn(
-        'w-full max-w-[390px] mx-auto p-4 rounded-2xl bg-surface-1 border transition-all duration-300 shadow-lg flex flex-col gap-3 select-none',
+        'glass animate-in slide-in-from-bottom-4 duration-200 border-t border-white/5 px-4 py-3 w-full max-w-[390px] mx-auto rounded-2xl border select-none transition-all shadow-xl',
         isFinished
-          ? 'border-status-success bg-status-success/5 shadow-status-success/10'
-          : 'border-border-interactive/60',
+          ? 'border-status-success bg-status-success/10 shadow-status-success/20'
+          : 'border-line/40 bg-surface-1/90',
         className
       )}
       {...props}
     >
-      {/* Cabecera y Display de 32px */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-content-secondary">
-          <Timer className={cn('w-5 h-5', isFinished ? 'text-status-success' : 'text-brand-primary')} />
-          <span className="text-xs font-semibold uppercase tracking-wider">
-            {isFinished ? 'Descanso finalizado' : 'Tiempo de descanso'}
-          </span>
+      <div className="flex items-center gap-3">
+        {/* Visualizador de tiempo regresivo */}
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-content-2">
+            {isFinished ? 'Descanso finalizado' : 'Descanso'}
+          </p>
+          <p
+            data-testid="timer-display"
+            className={cn(
+              'font-mono text-3xl font-bold leading-none tracking-tight transition-colors',
+              isFinished ? 'text-status-success animate-pulse' : 'text-content'
+            )}
+          >
+            {formatTime(secondsRemaining)}
+          </p>
         </div>
 
-        {/* Ajustes rápidos de tiempo */}
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label="Restar 15 segundos"
-            onClick={() => handleAdjustTime(-15)}
-            className="touch-target min-h-[48px] min-w-[48px] h-10 w-10 flex items-center justify-center rounded-xl bg-surface-2 hover:bg-surface-3 text-content-secondary hover:text-content-primary text-xs font-bold transition-all"
-          >
-            -15
-          </button>
-          <button
-            type="button"
-            aria-label="Añadir 30 segundos"
-            onClick={() => handleAdjustTime(30)}
-            className="touch-target min-h-[48px] min-w-[48px] h-10 w-10 flex items-center justify-center rounded-xl bg-surface-2 hover:bg-surface-3 text-content-secondary hover:text-content-primary text-xs font-bold transition-all"
-          >
-            +30
-          </button>
-        </div>
-      </div>
-
-      {/* Contador con Display 32px bold (DM Sans / Monoespaciado) */}
-      <div className="flex items-center justify-center py-2">
-        <span
-          data-testid="timer-display"
-          className={cn(
-            'text-[32px] leading-none font-bold font-mono tracking-tight transition-colors',
-            isFinished ? 'text-status-success animate-pulse' : 'text-content-primary'
-          )}
-        >
-          {formatTime(secondsRemaining)}
-        </span>
-      </div>
-
-      {/* Botón grande "Siguiente serie" de altura mínima >= 48px */}
-      <div className="pt-1">
-        <Button
+        {/* Botones de ajuste de tiempo: -15s y +30s */}
+        <button
           type="button"
-          variant={isFinished ? 'primary' : 'secondary'}
-          fullWidth
-          onClick={handleNextSetEarly}
-          className="min-h-[48px] touch-target text-sm font-semibold flex items-center justify-center gap-2"
+          aria-label="Restar 15 segundos"
+          onClick={() => handleAdjustTime(-15)}
+          className="press min-h-12 min-w-12 rounded-xl bg-surface-2 px-2.5 font-mono text-xs font-bold text-content touch-target shrink-0 flex items-center justify-center border border-line"
         >
-          <span>Siguiente serie</span>
-          <ArrowRight className="w-4 h-4 shrink-0" />
-        </Button>
+          -15s
+        </button>
+
+        <button
+          type="button"
+          aria-label="Añadir 30 segundos"
+          onClick={() => handleAdjustTime(30)}
+          className="press min-h-12 min-w-12 rounded-xl bg-surface-2 px-3 font-mono text-sm font-bold text-content touch-target shrink-0 flex items-center justify-center border border-line"
+        >
+          +30s
+        </button>
+
+        {/* Botón Saltar / Siguiente serie */}
+        <button
+          type="button"
+          aria-label="Siguiente serie"
+          onClick={handleNextSetEarly}
+          className="press min-h-12 rounded-xl bg-amber px-4 text-sm font-bold text-ink shadow-lg shadow-amber/30 touch-target shrink-0 flex items-center justify-center font-sans"
+        >
+          Saltar
+        </button>
+      </div>
+
+      {/* Barra de progreso inferior en ámbar */}
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-2">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all duration-500 ease-out',
+            isFinished ? 'bg-status-success' : 'bg-amber'
+          )}
+          style={{ width: `${progressRatio}%` }}
+        />
       </div>
     </div>
   );

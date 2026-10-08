@@ -27,7 +27,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Backdrop
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/70 backdrop-blur-xs overscroll-contain transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/75 backdrop-blur-sm overscroll-contain transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0",
         className
       )}
       {...props}
@@ -48,7 +48,7 @@ function AlertDialogContent({
         role="alertdialog"
         aria-modal="true"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex flex-col gap-4 w-full max-w-[390px] mx-auto rounded-t-2xl bg-surface-1 border-t border-border-interactive p-4 text-content-primary shadow-xl overscroll-contain transition-all duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:translate-y-full data-starting-style:translate-y-full outline-none",
+          "fixed inset-x-0 bottom-0 z-50 flex flex-col gap-4 w-full max-w-[390px] mx-auto rounded-t-2xl bg-surface-1 border-t border-border-interactive border-line-strong p-4 text-content shadow-2xl overscroll-contain transition-all duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0 data-ending-style:translate-y-full data-starting-style:translate-y-full outline-none",
           className
         )}
         {...props}

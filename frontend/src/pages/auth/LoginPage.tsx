@@ -57,69 +57,69 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   }, [isAuthenticated, isProfileComplete, onNavigateToApp, onNavigateToOnboarding]);
 
   return (
-    <div className="min-h-screen bg-black flex justify-center w-full select-none">
+    <div className="min-h-screen bg-shell flex justify-center w-full select-none">
       <div
         data-testid="mobile-container"
-        className="w-full max-w-[390px] min-h-screen bg-surface-base text-content-primary flex flex-col justify-between p-5 shadow-2xl relative overflow-x-hidden border-x border-border-subtle"
+        className="w-full max-w-[390px] min-h-screen bg-shell text-content flex flex-col justify-between p-5 shadow-2xl relative overflow-x-hidden border-x border-line"
       >
-        {/* Brand Header */}
-        <div className="flex flex-col items-center text-center pt-6 space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shadow-xl shadow-brand-primary/10">
+        {/* Brand Header con Hero Gradient y Logo Animado (T-20) */}
+        <div className="hero-gradient animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-3xl border border-line p-6 flex flex-col items-center text-center space-y-3 shadow-lg shadow-brand/10 mt-4">
+          <div className="w-16 h-16 rounded-2xl bg-brand/15 border border-brand/25 flex items-center justify-center text-brand-focus shadow-xl shadow-brand/20 animate-pulse">
             <Dumbbell className="w-8 h-8" />
           </div>
 
           <div className="space-y-1">
-            <h1 className="text-2xl font-extrabold tracking-tight text-content-primary">
-              Smart<span className="text-brand-primary">Forge</span>
+            <h1 className="text-2xl font-black tracking-tight text-content">
+              Smart<span className="text-brand-focus">Forge</span>
             </h1>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-brand-primary">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-amber">
               Entrenador Personal Digital
             </p>
           </div>
 
-          <p className="text-xs text-content-secondary max-w-[280px] leading-relaxed">
+          <p className="text-xs text-content-2 max-w-[280px] leading-relaxed">
             Entrenador personal digital con sobrecarga progresiva, auditoría de fatiga y mesociclos autorregulados.
           </p>
         </div>
 
-        {/* Feature Highlights */}
+        {/* Feature Highlights en Surface Cards con Glow (T-20) */}
         <div className="space-y-2 py-4">
-          <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-brand-primary/15 text-brand-primary border border-brand-primary/20 shrink-0">
+          <div className="p-3 rounded-2xl bg-surface-1 border border-line flex items-center gap-3 shadow-lg shadow-brand/5">
+            <div className="p-2 rounded-xl bg-amber/15 text-amber border border-amber/25 shrink-0">
               <Flame className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-content-primary">Sobrecarga Progresiva</div>
-              <div className="text-[10px] text-content-secondary">Incrementos automáticos por nivel y RIR</div>
+              <div className="text-xs font-bold text-content">Sobrecarga Progresiva</div>
+              <div className="text-[10px] text-content-3">Incrementos automáticos por nivel y RIR</div>
             </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-semantic-success/15 text-semantic-success border border-semantic-success/20 shrink-0">
+          <div className="p-3 rounded-2xl bg-surface-1 border border-line flex items-center gap-3 shadow-lg shadow-brand/5">
+            <div className="p-2 rounded-xl bg-success/15 text-success border border-success/25 shrink-0">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-content-primary">Auditoría de Dolor Articular</div>
-              <div className="text-[10px] text-content-secondary">Ajuste de volumen y rotación inteligente</div>
+              <div className="text-xs font-bold text-content">Auditoría de Dolor Articular</div>
+              <div className="text-[10px] text-content-3">Ajuste de volumen y rotación inteligente</div>
             </div>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-surface-1 border border-border-subtle flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-brand-focus/15 text-brand-focus border border-brand-focus/20 shrink-0">
+          <div className="p-3 rounded-2xl bg-surface-1 border border-line flex items-center gap-3 shadow-lg shadow-brand/5">
+            <div className="p-2 rounded-xl bg-brand/15 text-brand-focus border border-brand/25 shrink-0">
               <RefreshCw className="w-4 h-4" />
             </div>
             <div className="text-left">
-              <div className="text-xs font-bold text-content-primary">100% Offline en el Gimnasio</div>
-              <div className="text-[10px] text-content-secondary">Sincronización automática en reconexión</div>
+              <div className="text-xs font-bold text-content">100% Offline en el Gimnasio</div>
+              <div className="text-[10px] text-content-3">Sincronización automática en reconexión</div>
             </div>
           </div>
         </div>
 
-        {/* Autenticación 100% OAuth con Google (T-87) */}
+        {/* Autenticación 100% OAuth con Google (T-20, T-87) */}
         <div className="flex flex-col gap-3 w-full pb-4">
           {error && (
-            <div className="p-3 rounded-xl bg-status-error-bg/15 border border-status-error-bg text-semantic-error-text text-xs flex items-center gap-2 text-left">
-              <AlertCircle className="w-4 h-4 shrink-0 text-status-error-bg" />
+            <div className="p-3 rounded-xl bg-fatigue/15 border border-fatigue/30 text-fatigue-text text-xs flex items-center gap-2 text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 text-fatigue-text" />
               <span>{error}</span>
             </div>
           )}
@@ -132,14 +132,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({
               fullWidth
               isLoading={isLoading}
               onClick={loginWithGoogle}
-              className="min-h-[48px] touch-target font-semibold flex items-center justify-center gap-2.5"
+              className="press touch-target min-h-[48px] h-12 rounded-xl font-bold flex items-center justify-center gap-2.5 bg-surface-2 border border-line text-content hover:bg-surface-3 shadow-lg transition-all"
             >
               <GoogleIcon className="w-5 h-5 shrink-0" />
               <span>Continuar con Google</span>
             </Button>
           </div>
 
-          <p className="text-[11px] text-content-disabled text-center leading-tight">
+          <p className="text-[11px] text-content-3 text-center leading-tight">
             Al continuar, aceptás el registro y creación de tu perfil de entrenamiento (edad mínima 16 años).
           </p>
         </div>

@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from 'cn';
-import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { FilterBottomSheet, FilterState } from './FilterBottomSheet';
 import { apiClient } from '../../api/client';
 import type { Exercise, MovementPattern } from '../../api';
@@ -106,62 +104,64 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
     <div
       data-testid="catalog-main"
       className={cn(
-        'w-full max-w-[390px] mx-auto min-h-screen bg-surface-base text-content-primary flex flex-col overflow-x-hidden relative select-none pb-28',
+        'w-full max-w-[390px] mx-auto min-h-screen bg-shell text-content flex flex-col overflow-x-hidden relative select-none pb-28',
         className
       )}
     >
-      {/* Header Contextual Superior con Input de Búsqueda por Nombre (T-88) */}
-      <header className="sticky top-0 z-20 bg-surface-1/95 backdrop-blur-md border-b border-border-subtle p-4 flex flex-col gap-3">
+      {/* Header Contextual Superior con Buscador Redondeado (T-18) */}
+      <header className="sticky top-0 z-20 bg-surface-1/95 backdrop-blur-md border-b border-line p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-brand-primary/10 text-brand-primary rounded-xl border border-brand-primary/20 shrink-0">
+            <div className="p-2 bg-brand/15 text-brand-focus rounded-xl border border-brand/20 shrink-0">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-content-primary tracking-tight">
+              <h1 className="text-lg font-extrabold text-content tracking-tight">
                 Catálogo de Ejercicios
               </h1>
-              <p className="text-xs text-content-secondary">
+              <p className="text-xs text-content-3">
                 Biblioteca biomecánica para entrenamiento
               </p>
             </div>
           </div>
 
-          <Badge variant="default" className="text-xs font-mono shrink-0">
+          <span className="inline-flex items-center rounded-full bg-surface-2 px-3 py-1 text-xs font-mono font-bold text-content-2">
             {filteredExercises.length}
-          </Badge>
+          </span>
         </div>
 
-        {/* Input de búsqueda por texto superior (T-88) */}
+        {/* Barra de búsqueda redondeada con diana >= 48px (T-18) */}
         <div className="relative w-full">
-          <Input
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-content-3">
+            <Search className="w-4 h-4" />
+          </div>
+          <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar ejercicio por nombre..."
-            iconLeft={<Search className="w-4 h-4" />}
-            className="w-full min-h-[48px] text-xs h-12 bg-surface-2 border-border-interactive"
+            className="w-full min-h-[48px] h-12 pl-10 pr-4 rounded-2xl bg-surface-2 border border-line text-xs font-medium text-content placeholder:text-content-3 focus:outline-none focus:ring-2 focus:ring-brand-focus transition-all"
           />
         </div>
       </header>
 
-      {/* Lista Principal de Ejercicios Scrolleable */}
+      {/* Lista Principal de Ejercicios en Cards Horizontales (T-18) */}
       <main className="flex-1 w-full p-4 flex flex-col gap-3">
         {isLoading ? (
-          <div className="py-16 flex flex-col items-center justify-center gap-3 text-content-secondary animate-pulse">
-            <Dumbbell className="w-8 h-8 text-brand-primary/50" />
+          <div className="py-16 flex flex-col items-center justify-center gap-3 text-content-3 animate-pulse">
+            <Dumbbell className="w-8 h-8 text-brand/50" />
             <span className="text-sm font-medium">Cargando biblioteca de ejercicios...</span>
           </div>
         ) : filteredExercises.length === 0 ? (
-          <div className="py-16 text-center bg-surface-1 rounded-2xl border border-border-subtle p-6 flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-surface-2 flex items-center justify-center text-content-secondary">
+          <div className="py-16 text-center bg-surface-1 rounded-2xl border border-line p-6 flex flex-col items-center gap-3 shadow-lg shadow-brand/5">
+            <div className="w-12 h-12 rounded-2xl bg-surface-2 flex items-center justify-center text-content-3">
               <Search className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-content-primary">
+              <h3 className="text-base font-bold text-content">
                 No se encontraron ejercicios
               </h3>
-              <p className="text-xs text-content-secondary max-w-xs mx-auto">
+              <p className="text-xs text-content-2 max-w-xs mx-auto">
                 Probá buscando con otro término o abrí los filtros para cambiar la selección.
               </p>
             </div>
@@ -169,36 +169,36 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
         ) : (
           <div className="flex flex-col gap-2.5 w-full">
             {visibleExercises.map((exercise) => (
-              <div
+              <article
                 key={exercise.id}
                 data-testid="exercise-card"
                 onClick={() => onSelectExercise?.(exercise)}
-                className="group bg-surface-1 hover:bg-surface-2 border border-border-subtle hover:border-border-interactive rounded-2xl p-4 shadow-sm transition-all duration-150 cursor-pointer flex flex-col gap-2.5 active:scale-[0.99] touch-target min-h-[48px] w-full"
+                className="press touch-target min-h-[48px] group bg-surface-1 hover:bg-surface-2 border border-line hover:border-line/80 rounded-2xl p-4 shadow-lg shadow-brand/5 transition-all duration-150 cursor-pointer flex flex-col gap-2.5 w-full"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-sm font-bold text-content-primary group-hover:text-brand-primary transition-colors leading-snug">
+                  <h3 className="text-sm font-bold text-content group-hover:text-brand-focus transition-colors leading-snug">
                     {exercise.name}
                   </h3>
-                  <ChevronRight className="w-4 h-4 text-content-secondary group-hover:text-brand-primary transition-transform shrink-0 mt-0.5" />
+                  <ChevronRight className="w-4 h-4 text-content-3 group-hover:text-brand-focus transition-transform shrink-0 mt-0.5" />
                 </div>
 
-                <p className="text-xs text-content-secondary line-clamp-2 leading-relaxed">
+                <p className="text-xs text-content-2 line-clamp-2 leading-relaxed">
                   {exercise.instructions || 'Instrucciones biomecánicas no disponibles.'}
                 </p>
 
-                {/* Badges de clasificación */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-border-subtle/50 text-[11px]">
-                  <Badge variant="brand" size="sm">
+                {/* Badges de clasificación en bg-surface-2 text-content-2 (T-18) */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-line/60 text-[11px]">
+                  <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-content-2">
                     {getPatternLabel(exercise.movement_pattern)}
-                  </Badge>
-                  <Badge variant="default" size="sm" className="capitalize">
+                  </span>
+                  <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-content-2 capitalize">
                     {exercise.primary_muscle}
-                  </Badge>
-                  <Badge variant="default" size="sm">
+                  </span>
+                  <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] font-semibold text-content-3">
                     {exercise.is_compound ? 'Compuesto' : 'Monoarticular'}
-                  </Badge>
+                  </span>
                 </div>
-              </div>
+              </article>
             ))}
 
             {/* Botón de carga progresiva si quedan más ejercicios */}
@@ -207,7 +207,7 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
                 type="button"
                 variant="secondary"
                 onClick={() => setVisibleCount((prev) => prev + 20)}
-                className="w-full min-h-[48px] touch-target text-xs font-semibold mt-2"
+                className="press w-full min-h-[48px] touch-target text-xs font-semibold mt-2 rounded-xl"
               >
                 Cargar más ejercicios ({filteredExercises.length - visibleCount} restantes)
               </Button>
@@ -216,28 +216,31 @@ export const ExerciseCatalogPage: React.FC<ExerciseCatalogPageProps> = ({
         )}
       </main>
 
-      {/* Dock de Filtros en la Mitad Inferior (Sticky en zona de pulgar, RF-04, CF-06) */}
+      {/* Floating Action Dock de Filtros en la Mitad Inferior (Sticky/Fixed, RF-04, CF-06, T-18) */}
       <div
         data-testid="catalog-search-dock"
-        className="fixed bottom-0 inset-x-0 z-30 w-full max-w-[390px] mx-auto p-3 bg-surface-1/95 backdrop-blur-md border-t border-border-interactive flex items-center gap-2 shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
+        className="fixed bottom-0 inset-x-0 z-30 w-full max-w-[390px] mx-auto p-3 glass border-t border-line flex items-center gap-2 shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
       >
-        <Button
+        <button
           type="button"
-          variant={hasActiveFilters ? 'primary' : 'secondary'}
           onClick={() => setIsFilterSheetOpen(true)}
           aria-label="Filtrar catálogo"
-          fullWidth
-          className="touch-target min-h-[48px] h-12 px-4 flex items-center justify-center gap-2 rounded-xl font-semibold text-xs"
+          className={cn(
+            'press touch-target min-h-[48px] h-12 px-4 w-full flex items-center justify-center gap-2 rounded-xl font-bold text-xs transition-all shadow-lg',
+            hasActiveFilters
+              ? 'bg-amber text-ink shadow-amber/30'
+              : 'bg-brand text-content shadow-brand/30'
+          )}
         >
           <Filter className="w-4 h-4" />
           <span>Filtrar catálogo</span>
           {hasActiveFilters && (
-            <span className="w-2 h-2 rounded-full bg-brand-contrast shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-ink shrink-0 animate-pulse" />
           )}
-        </Button>
+        </button>
       </div>
 
-      {/* Bottom Sheet de Filtros (RF-06, CF-08) */}
+      {/* Bottom Sheet de Filtros (RF-06, CF-08, T-18) */}
       <FilterBottomSheet
         isOpen={isFilterSheetOpen}
         onClose={() => setIsFilterSheetOpen(false)}

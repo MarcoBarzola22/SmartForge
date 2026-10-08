@@ -95,9 +95,9 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
 
   if (isLoading) {
     return (
-      <div className={`min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 ${className}`}>
-        <div className="flex flex-col items-center gap-3 text-neutral-400 animate-pulse">
-          <Dumbbell className="w-8 h-8 text-amber-500/60" />
+      <div className={`min-h-screen bg-shell text-content flex flex-col items-center justify-center p-4 ${className}`}>
+        <div className="flex flex-col items-center gap-3 text-content-3 animate-pulse">
+          <Dumbbell className="w-8 h-8 text-amber/60" />
           <p className="text-sm font-medium">Cargando detalle del ejercicio...</p>
         </div>
       </div>
@@ -106,15 +106,15 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
 
   if (!exercise) {
     return (
-      <div className={`min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 ${className}`}>
+      <div className={`min-h-screen bg-shell text-content flex flex-col items-center justify-center p-4 ${className}`}>
         <div className="max-w-sm text-center space-y-4">
-          <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-          <h2 className="text-lg font-bold text-white">Ejercicio no encontrado</h2>
-          <p className="text-xs text-neutral-400">
+          <AlertCircle className="w-10 h-10 text-amber mx-auto" />
+          <h2 className="text-lg font-bold text-content">Ejercicio no encontrado</h2>
+          <p className="text-xs text-content-2">
             No se pudo recuperar la información del ejercicio solicitado.
           </p>
           {onBack && (
-            <Button variant="outline" onClick={onBack} className="min-h-[48px]">
+            <Button variant="outline" onClick={onBack} className="min-h-[48px] touch-target press">
               Volver al catálogo
             </Button>
           )}
@@ -128,9 +128,9 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
   )}`;
 
   return (
-    <div className={`min-h-screen bg-neutral-950 text-neutral-100 flex flex-col w-full overflow-x-hidden ${className}`}>
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-neutral-900/95 backdrop-blur-md border-b border-neutral-800 p-4">
+    <div className={`min-h-screen bg-shell text-content flex flex-col w-full overflow-x-hidden ${className}`}>
+      {/* Header Contextual Superior (T-18) */}
+      <header className="sticky top-0 z-30 bg-surface-1/95 backdrop-blur-md border-b border-line p-4">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             {onBack && (
@@ -138,16 +138,16 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
                 type="button"
                 onClick={onBack}
                 aria-label="Volver"
-                className="p-2.5 rounded-xl bg-neutral-800/80 hover:bg-neutral-800 text-neutral-300 hover:text-white transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center border border-neutral-700/60 shrink-0"
+                className="press touch-target min-h-[48px] min-w-[48px] p-2.5 rounded-xl bg-surface-2 border border-line text-content-2 hover:text-content hover:bg-surface-3 transition-colors flex items-center justify-center shrink-0"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
             )}
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold text-white tracking-tight leading-tight line-clamp-1 truncate">
+              <h1 className="text-base sm:text-lg font-extrabold text-content tracking-tight leading-tight line-clamp-1 truncate">
                 {exercise.name}
               </h1>
-              <p className="text-xs text-neutral-400 font-medium truncate">
+              <p className="text-xs text-content-3 font-medium truncate">
                 Metadatos Biomecánicos y Guía Técnica
               </p>
             </div>
@@ -161,21 +161,20 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
 
       {/* Main Content */}
       <main className="flex-1 max-w-3xl w-full mx-auto p-4 flex flex-col gap-5 min-w-0">
-        {/* Video Player or Fallback Card (RF-09, CA-09.3, CL-14) */}
-        {/* Enlace Externo a Video Demostrativo (T-88) */}
-        <section className="overflow-hidden rounded-3xl bg-neutral-900 border border-neutral-800 shadow-xl min-w-0 w-full">
+        {/* Video Player or Fallback Card (RF-09, CA-09.3, CL-14, T-18) */}
+        <section className="overflow-hidden rounded-3xl border border-line shadow-xl min-w-0 w-full">
           {exercise.video_url ? (
             <div
               data-testid="video-action-card"
-              className="p-6 sm:p-8 flex flex-col items-center text-center gap-4 bg-gradient-to-b from-neutral-900 to-neutral-950"
+              className="p-6 sm:p-8 flex flex-col items-center text-center gap-4 hero-gradient"
             >
-              <div className="w-14 h-14 rounded-2xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shadow-lg">
+              <div className="w-14 h-14 rounded-2xl bg-brand/15 border border-brand/25 flex items-center justify-center text-brand-focus shadow-lg shadow-brand/10">
                 <Play className="w-7 h-7 fill-current" />
               </div>
               <div className="space-y-1.5 max-w-md">
-                <h3 className="text-base font-bold text-white">Demostración en Video</h3>
-                <p className="text-xs text-neutral-400 leading-relaxed">
-                  Mirá la técnica biomecánica y ejecución de <strong className="text-neutral-200">{exercise.name}</strong> directamente en YouTube.
+                <h3 className="text-base font-extrabold text-content">Demostración en Video</h3>
+                <p className="text-xs text-content-2 leading-relaxed">
+                  Mirá la técnica biomecánica y ejecución de <strong className="text-content">{exercise.name}</strong> directamente en YouTube.
                 </p>
               </div>
 
@@ -184,7 +183,7 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
                 variant="primary"
                 size="lg"
                 fullWidth
-                className="min-h-[48px] touch-target font-semibold flex items-center justify-center gap-2 max-w-md shadow-lg"
+                className="press min-h-[48px] touch-target font-bold flex items-center justify-center gap-2 max-w-md shadow-lg shadow-brand/30 bg-brand text-content rounded-xl"
               >
                 <a
                   href={exercise.video_url}
@@ -200,15 +199,15 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
           ) : (
             <div
               data-testid="video-fallback-card"
-              className="p-6 sm:p-8 flex flex-col items-center text-center gap-4 bg-gradient-to-b from-neutral-900 to-neutral-950"
+              className="p-6 sm:p-8 flex flex-col items-center text-center gap-4 bg-surface-1"
             >
-              <div className="w-14 h-14 rounded-2xl bg-neutral-800/90 border border-neutral-700 flex items-center justify-center text-amber-400 shadow-lg">
+              <div className="w-14 h-14 rounded-2xl bg-surface-2 border border-line flex items-center justify-center text-amber shadow-lg shadow-amber/10">
                 <VideoOff className="w-7 h-7" />
               </div>
               <div className="space-y-1.5 max-w-md">
-                <h3 className="text-base font-bold text-white">Video no disponible</h3>
-                <p className="text-xs text-neutral-400 leading-relaxed">
-                  No se pudo cargar la demostración en video para <strong className="text-neutral-200">{exercise.name}</strong>. Podés realizar el movimiento siguiendo las instrucciones biomecánicas o buscar demostraciones alternativas.
+                <h3 className="text-base font-extrabold text-content">Video no disponible</h3>
+                <p className="text-xs text-content-2 leading-relaxed">
+                  No se pudo cargar la demostración en video para <strong className="text-content">{exercise.name}</strong>. Podés realizar el movimiento siguiendo las instrucciones biomecánicas o buscar demostraciones alternativas.
                 </p>
               </div>
 
@@ -216,14 +215,14 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
                 asChild
                 variant="secondary"
                 size="lg"
-                className="min-h-[48px] touch-target font-semibold flex items-center justify-center gap-2 max-w-md"
+                className="press min-h-[48px] touch-target font-bold flex items-center justify-center gap-2 max-w-md rounded-xl border-line"
               >
                 <a
                   href={youtubeSearchUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Play className="w-4 h-4 text-red-400" />
+                  <Play className="w-4 h-4 text-fatigue" />
                   <span>Buscar demostración en YouTube</span>
                   <ExternalLink className="w-3.5 h-3.5 opacity-70" />
                 </a>
@@ -232,37 +231,37 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
           )}
         </section>
 
-        {/* Biomechanical Details Card */}
-        <section className="bg-neutral-900/90 border border-neutral-800 rounded-3xl p-4 sm:p-5 shadow-xl flex flex-col gap-4 w-full min-w-0">
-          <div className="flex items-center gap-2 border-b border-neutral-800/80 pb-3 min-w-0">
-            <Activity className="w-4 h-4 text-amber-400 shrink-0" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider truncate min-w-0">
+        {/* Biomechanical Details Card con telemetría en font-mono (T-18) */}
+        <section className="bg-surface-1 border border-line rounded-3xl p-4 sm:p-5 shadow-lg shadow-brand/5 flex flex-col gap-4 w-full min-w-0">
+          <div className="flex items-center gap-2 border-b border-line pb-3 min-w-0">
+            <Activity className="w-4 h-4 text-amber shrink-0" />
+            <h2 className="text-xs font-bold text-content uppercase tracking-wider truncate min-w-0">
               Análisis Biomecánico
             </h2>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs w-full min-w-0">
-            <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800/80 flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
-              <span className="text-[11px] text-neutral-400 font-medium block truncate min-w-0">Patrón Biomecánico</span>
-              <span className="font-semibold text-white capitalize break-words hyphens-auto min-w-0 leading-snug">{getPatternLabel(exercise.movement_pattern)}</span>
+            <div className="p-3 bg-surface-2 rounded-xl border border-line flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
+              <span className="text-[11px] text-content-3 font-medium block truncate min-w-0">Patrón Biomecánico</span>
+              <span className="font-semibold text-content capitalize break-words hyphens-auto min-w-0 leading-snug">{getPatternLabel(exercise.movement_pattern)}</span>
             </div>
 
-            <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800/80 flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
-              <span className="text-[11px] text-neutral-400 font-medium block truncate min-w-0">Músculo Primario</span>
-              <span className="font-semibold text-emerald-400 capitalize break-words hyphens-auto min-w-0 leading-snug">{exercise.primary_muscle}</span>
+            <div className="p-3 bg-surface-2 rounded-xl border border-line flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
+              <span className="text-[11px] text-content-3 font-medium block truncate min-w-0">Músculo Primario</span>
+              <span className="font-semibold text-success capitalize break-words hyphens-auto min-w-0 leading-snug">{exercise.primary_muscle}</span>
             </div>
 
-            <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800/80 flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
-              <span className="text-[11px] text-neutral-400 font-medium block truncate min-w-0">Tipo de Ejercicio</span>
-              <span className="font-semibold text-white break-words hyphens-auto min-w-0 leading-snug">
+            <div className="p-3 bg-surface-2 rounded-xl border border-line flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
+              <span className="text-[11px] text-content-3 font-medium block truncate min-w-0">Tipo de Ejercicio</span>
+              <span className="font-semibold text-content break-words hyphens-auto min-w-0 leading-snug">
                 {exercise.is_compound ? 'Compuesto (Multiarticular)' : 'Monoarticular'}
               </span>
             </div>
 
             {exercise.initial_load_ratio && (
-              <div className="p-3 bg-neutral-950/60 rounded-xl border border-neutral-800/80 flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
-                <span className="text-[11px] text-neutral-400 font-medium block truncate min-w-0">Ratio de Carga Inicial</span>
-                <span className="font-mono font-semibold text-amber-400 break-words hyphens-auto min-w-0 leading-snug">
+              <div className="p-3 bg-surface-2 rounded-xl border border-line flex flex-col justify-center min-w-0 gap-1 overflow-hidden">
+                <span className="text-[11px] text-content-3 font-medium block truncate min-w-0">Ratio de Carga Inicial</span>
+                <span className="font-mono font-bold text-amber break-words hyphens-auto min-w-0 leading-snug">
                   {Math.round(exercise.initial_load_ratio * 100)}% de referencia
                 </span>
               </div>
@@ -272,30 +271,33 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
           {/* Secondary Muscles */}
           {exercise.secondary_muscles && exercise.secondary_muscles.length > 0 && (
             <div className="space-y-1.5 pt-1 min-w-0">
-              <span className="text-xs text-neutral-400 font-medium block truncate min-w-0">
+              <span className="text-xs text-content-3 font-medium block truncate min-w-0">
                 Músculos Secundarios / Sinérgicos:
               </span>
               <div className="flex flex-wrap gap-1.5 min-w-0">
                 {exercise.secondary_muscles.map((muscle) => (
-                  <Badge key={muscle} variant="default" size="sm" className="capitalize break-words min-w-0 max-w-full">
+                  <span
+                    key={muscle}
+                    className="rounded-full bg-surface-2 border border-line px-2.5 py-1 text-[11px] font-semibold text-content-2 capitalize break-words min-w-0 max-w-full"
+                  >
                     {muscle}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             </div>
           )}
         </section>
 
-        {/* Step-by-step Technical Instructions */}
-        <section className="bg-neutral-900/90 border border-neutral-800 rounded-3xl p-5 shadow-xl flex flex-col gap-3 w-full min-w-0">
-          <div className="flex items-center gap-2 border-b border-neutral-800/80 pb-3 min-w-0">
-            <FileText className="w-4 h-4 text-amber-400 shrink-0" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider truncate">
+        {/* Step-by-step Technical Instructions Formatted (T-18) */}
+        <section className="bg-surface-1 border border-line rounded-3xl p-5 shadow-lg shadow-brand/5 flex flex-col gap-3 w-full min-w-0">
+          <div className="flex items-center gap-2 border-b border-line pb-3 min-w-0">
+            <FileText className="w-4 h-4 text-amber shrink-0" />
+            <h2 className="text-xs font-bold text-content uppercase tracking-wider truncate">
               Instrucciones Técnicas de Ejecución
             </h2>
           </div>
 
-          <div className="text-xs text-neutral-300 leading-relaxed whitespace-pre-line space-y-2 bg-neutral-950/40 p-4 rounded-2xl border border-neutral-800/60 break-words min-w-0">
+          <div className="text-xs text-content-2 leading-relaxed whitespace-pre-line space-y-2 bg-surface-2 p-4 rounded-2xl border border-line break-words min-w-0">
             {exercise.instructions || 'Instrucciones no detalladas. Mantener postura neutral y control de tempo en fase excéntrica.'}
           </div>
         </section>
@@ -303,3 +305,5 @@ export const ExerciseDetailPage: React.FC<ExerciseDetailPageProps> = ({
     </div>
   );
 };
+
+export default ExerciseDetailPage;

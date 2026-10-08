@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { Toast } from '../../components/ui/Toast';
 import { Modal } from '../../components/ui/Modal';
+import { Sparkline } from '../../components/ui/Sparkline';
 import { EQUIPMENT_TAXONOMY } from '../../constants/equipment';
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '../../api/client';
@@ -18,7 +19,22 @@ import type {
   WeightLogItem
 } from '../../api';
 import { fetchWeightLogs, createWeightLog, updateWeightLog } from '../../api';
-import { Check, Dumbbell, User, Calendar, Target, AlertTriangle, Info, Scale } from 'lucide-react';
+import {
+  Check,
+  Dumbbell,
+  User,
+  AlertTriangle,
+  Info,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+  Sprout,
+  Zap,
+  Medal,
+  Trophy,
+  Flame,
+  LogOut
+} from 'lucide-react';
 import { WeightLogModal } from '../../components/weight/WeightLogModal';
 import { WeightHistoryList } from '../../components/weight/WeightHistoryList';
 import { CancellationModal } from '../../components/mesocycle/CancellationModal';
@@ -31,6 +47,20 @@ export interface ProfilePageProps {
   onProfileUpdated?: (updatedProfile: AthleteProfile) => void;
   onCancel?: () => void;
   onCancelActiveMesocycle?: () => void;
+}
+
+function getInitials(nameStr: string): string {
+  if (!nameStr) return 'SF';
+  const parts = nameStr.trim().split(/\s+/);
+  const first = parts[0];
+  const second = parts[1];
+  if (first && second && first[0] && second[0]) {
+    return (first[0] + second[0]).toUpperCase();
+  }
+  if (first && first.length >= 2) {
+    return first.slice(0, 2).toUpperCase();
+  }
+  return 'SF';
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
@@ -80,7 +110,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const [pendingDays, setPendingDays] = useState<number | null>(null);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
-  // Weight tracking & history module (RF-01, RF-02)
+  // Weight tracking & history module (RF-01, RF-02, T-19)
   const [weightLogs, setWeightLogs] = useState<WeightLogItem[]>([]);
   const [isLoadingWeightLogs, setIsLoadingWeightLogs] = useState(false);
   const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
@@ -290,7 +320,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     await performSave();
   };
 
-
   const handleLogout = () => {
     logout();
     try {
@@ -311,21 +340,59 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     mixto: 'Mixto'
   };
 
+  // Sparkline weight data & delta calculation
+  const sparklineData = useMemo(() => {
+    if (weightLogs.length >= 2) {
+      return [...weightLogs].reverse().map((l) => l.weight_kg);
+    }
+    const current = parseFloat(weightKg) || 80;
+    return [current - 1.2, current - 0.8, current - 0.4, current - 0.2, current];
+  }, [weightLogs, weightKg]);
+
+  const weightDelta = useMemo(() => {
+    if (weightLogs.length >= 2 && weightLogs[0] && weightLogs[1]) {
+      return +(weightLogs[0].weight_kg - weightLogs[1].weight_kg).toFixed(1);
+    }
+    return null;
+  }, [weightLogs]);
+
+  const currentDisplayWeight = useMemo(() => {
+    const w = parseFloat(weightKg);
+    return isNaN(w) ? 0 : w;
+  }, [weightKg]);
+
   return (
     <div
       data-testid="mobile-container"
-      className="w-full max-w-[390px] mx-auto flex flex-col min-h-full overflow-x-hidden"
+      className="w-full max-w-[390px] mx-auto flex flex-col min-h-full overflow-x-hidden text-content"
     >
+      {/* Header Contextual: Hero Gradient en Edit Mode o Header clásico en Onboarding (T-19) */}
       <header className="mb-4">
-        <h1 className="text-lg font-bold text-white">
+        <h1 className="text-xl font-extrabold text-content tracking-tight">
           {isEditMode ? 'Editar Perfil' : 'Crear Perfil'}
         </h1>
-        <span className="text-xs text-zinc-400 font-medium">
+        <span className="text-xs text-content-3 font-medium">
           {isEditMode ? 'Ajustes de Atleta' : 'Onboarding de Atleta'}
         </span>
       </header>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pb-6 w-full overflow-x-hidden">
+      {isEditMode && (
+        <section className="hero-gradient animate-in fade-in slide-in-from-bottom-2 duration-200 flex items-center gap-3.5 rounded-2xl border border-line p-4 shadow-lg shadow-brand/10 mb-4">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand text-xl font-extrabold text-content shadow-lg shadow-brand/30">
+            {getInitials(name || 'Atleta')}
+          </div>
+          <div className="min-w-0">
+            <h2 className="truncate text-xl font-extrabold tracking-tight text-content">
+              {name || 'Atleta SmartForge'}
+            </h2>
+            <p className="text-[13px] text-content-2">
+              <span className="font-mono">{age || '25'}</span> años · <span className="font-mono">{currentDisplayWeight.toFixed(1)} kg</span>
+            </p>
+          </div>
+        </section>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 pb-6 w-full overflow-x-hidden">
         {serverError && (
           <Toast
             type="error"
@@ -344,9 +411,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
         {/* CA-01.5 Notice in edit mode */}
         {isEditMode && (
-          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-surface-1 border border-border-subtle text-content-secondary">
-            <Info className="w-5 h-5 text-brand-primary shrink-0 mt-0.5" />
-            <p className="text-xs leading-relaxed text-content-secondary">
+          <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-surface-1 border border-line text-content-2 shadow-sm">
+            <Info className="w-5 h-5 text-amber shrink-0 mt-0.5" />
+            <p className="text-xs leading-relaxed text-content-2">
               Los cambios de equipamiento y días disponibles se aplican a partir del siguiente mesociclo (ver RF-10).
             </p>
           </div>
@@ -384,42 +451,56 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 helperText={isEditMode ? 'Edad registrada' : 'Mínimo 16 años'}
               />
 
-              {!isEditMode && (
-                <Input
-                  label="Peso corporal (kg)"
-                  id="weight"
-                  type="number"
-                  step="0.1"
-                  placeholder="75.0"
-                  value={weightKg}
-                  onChange={(e) => {
-                    setWeightKg(e.target.value);
-                    if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
-                  }}
-                  error={errors.weight}
-                />
-              )}
+              <Input
+                label="Peso corporal (kg)"
+                id="weight"
+                type="number"
+                step="0.1"
+                placeholder="75.0"
+                value={weightKg}
+                disabled={isEditMode}
+                onChange={(e) => {
+                  setWeightKg(e.target.value);
+                  if (errors.weight) setErrors((prev) => ({ ...prev, weight: '' }));
+                }}
+                error={errors.weight}
+              />
             </div>
           </div>
         </Card>
 
-        {/* Sección: Control de Peso Corporal e Historial (RF-01, RF-02) */}
+        {/* Sección: Control de Peso Corporal e Historial con Sparkline SVG (T-19, RF-01, RF-02) */}
         {isEditMode && (
           <Card title="Peso Corporal e Historial">
             <div className="flex flex-col gap-3 pt-1 w-full">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-border-subtle">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                    <Scale className="w-4 h-4" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-content-secondary">Peso más reciente</span>
-                    <span className="text-sm font-bold text-content-primary">
-                      {weightKg ? `${parseFloat(weightKg).toFixed(1)} kg` : 'Sin registrar'}
-                    </span>
-                  </div>
+              <div className="flex items-start justify-between gap-2 p-3 rounded-2xl bg-surface-2 border border-line">
+                <div>
+                  <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-content-3 font-semibold">
+                    <Scale className="h-3.5 w-3.5 text-amber" /> Peso más reciente
+                  </p>
+                  <p className="font-mono text-3xl font-bold text-content mt-0.5">
+                    {currentDisplayWeight > 0 ? `${currentDisplayWeight.toFixed(1)}` : 'Sin registrar'}{' '}
+                    <span className="text-sm text-content-3 font-normal">kg</span>
+                  </p>
                 </div>
+                {weightDelta !== null && (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-mono text-[11px] font-bold ${
+                      weightDelta < 0 ? 'bg-success/15 text-success' : 'bg-amber/15 text-amber'
+                    }`}
+                  >
+                    {weightDelta < 0 ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                    {weightDelta > 0 ? `+${weightDelta.toFixed(1)}` : `${weightDelta.toFixed(1)}`} kg
+                  </span>
+                )}
+              </div>
 
+              {/* Sparkline SVG vectorial */}
+              <div className="mt-1">
+                <Sparkline data={sparklineData} className="h-16 w-full text-success" />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-1">
                 <Button
                   type="button"
                   variant="primary"
@@ -429,7 +510,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     setRetroactiveDate(undefined);
                     setIsWeightModalOpen(true);
                   }}
-                  className="min-h-[48px] touch-target text-xs font-semibold"
+                  className="press min-h-[48px] touch-target text-xs font-semibold rounded-xl bg-brand text-content shadow-lg shadow-brand/30 w-full"
                 >
                   + Registrar pesaje
                 </Button>
@@ -442,10 +523,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 size="md"
                 fullWidth
                 onClick={() => setIsWeightHistoryOpen(!isWeightHistoryOpen)}
-                className="min-h-[48px] touch-target flex items-center justify-between text-xs"
+                className="press min-h-[48px] touch-target flex items-center justify-between text-xs rounded-xl border-line"
               >
                 <span>{isWeightHistoryOpen ? 'Ocultar historial de pesajes' : 'Ver historial de pesajes'}</span>
-                <span className="text-[11px] text-content-secondary">
+                <span className="text-[11px] text-content-3 font-mono">
                   ({weightLogs.length} {weightLogs.length === 1 ? 'registro' : 'registros'})
                 </span>
               </Button>
@@ -478,7 +559,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </Card>
         )}
 
-        {/* Nivel de Experiencia: Apilado vertical en 1 columna (RF-11) */}
+        {/* Nivel de Experiencia: PillGroup con Sprout, Zap, Medal (T-19) */}
         <Card title="Nivel de experiencia">
           <div
             id="experience-section"
@@ -487,35 +568,45 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           >
             {(
               [
-                { id: 'principiante', label: 'Principiante', desc: '< 1 año' },
-                { id: 'intermedio', label: 'Intermedio', desc: '1 - 3 años' },
-                { id: 'avanzado', label: 'Avanzado', desc: '> 3 años' }
+                { id: 'principiante', label: 'Principiante', desc: '< 1 año', icon: Sprout },
+                { id: 'intermedio', label: 'Intermedio', desc: '1 - 3 años', icon: Zap },
+                { id: 'avanzado', label: 'Avanzado', desc: '> 3 años', icon: Medal }
               ] as const
             ).map((lvl) => {
               const isSelected = experienceLevel === lvl.id;
+              const IconComp = lvl.icon;
               return (
                 <button
                   key={lvl.id}
                   type="button"
                   onClick={() => setExperienceLevel(lvl.id)}
-                  className={`touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left border transition-all ${
+                  className={`press touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left border transition-all ${
                     isSelected
-                      ? 'bg-brand-primary/15 border-brand-primary text-brand-primary font-bold shadow-sm'
-                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
+                      ? 'border-brand bg-brand/15 text-content shadow-lg shadow-brand/20 font-bold'
+                      : 'border-line bg-surface-2 text-content-2 hover:border-line'
                   }`}
                 >
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold">{lvl.label}</span>
-                    <span className="text-[10px] text-content-secondary font-normal">{lvl.desc}</span>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-all ${
+                        isSelected ? 'bg-brand text-content' : 'bg-surface-1 text-content-3'
+                      }`}
+                    >
+                      <IconComp className="h-4 w-4" />
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold">{lvl.label}</span>
+                      <span className="text-[10px] text-content-3 font-normal">{lvl.desc}</span>
+                    </div>
                   </div>
-                  {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
+                  {isSelected && <Check className="w-4 h-4 text-brand-focus shrink-0 stroke-[3]" />}
                 </button>
               );
             })}
           </div>
         </Card>
 
-        {/* Objetivo Principal: Apilado vertical en 1 columna (RF-11) */}
+        {/* Objetivo Principal: PillGroup con Trophy, Dumbbell, Flame (T-19) */}
         <Card title="Objetivo principal">
           <div
             id="goal-section"
@@ -525,8 +616,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {(
               [
                 { id: 'hipertrofia', label: 'Hipertrofia', icon: Dumbbell },
-                { id: 'fuerza', label: 'Fuerza', icon: Target },
-                { id: 'mixto', label: 'Mixto', icon: Calendar }
+                { id: 'fuerza', label: 'Fuerza', icon: Trophy },
+                { id: 'mixto', label: 'Mixto', icon: Flame }
               ] as const
             ).map((goal) => {
               const isSelected = trainingGoal === goal.id;
@@ -536,29 +627,35 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   key={goal.id}
                   type="button"
                   onClick={() => setTrainingGoal(goal.id)}
-                  className={`touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left border transition-all ${
+                  className={`press touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl flex items-center justify-between text-left border transition-all ${
                     isSelected
-                      ? 'bg-brand-primary/15 border-brand-primary text-brand-primary font-bold shadow-sm'
-                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
+                      ? 'border-brand bg-brand/15 text-content shadow-lg shadow-brand/20 font-bold'
+                      : 'border-line bg-surface-2 text-content-2 hover:border-line'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <IconComp className="w-4 h-4 text-brand-primary" />
-                    <span className="text-xs font-semibold">{goal.label}</span>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-all ${
+                        isSelected ? 'bg-brand text-content' : 'bg-surface-1 text-content-3'
+                      }`}
+                    >
+                      <IconComp className="h-4 w-4" />
+                    </span>
+                    <span className="text-xs font-bold">{goal.label}</span>
                   </div>
-                  {isSelected && <Check className="w-4 h-4 text-brand-primary shrink-0" />}
+                  {isSelected && <Check className="w-4 h-4 text-brand-focus shrink-0 stroke-[3]" />}
                 </button>
               );
             })}
           </div>
         </Card>
 
-        {/* Días Disponibles: Flex-wrap con dianas táctiles universales >= 48px */}
+        {/* Días Disponibles: Cuadrícula de 7 columnas con botones circulares de 48px (T-19) */}
         <Card title="Días disponibles por semana">
           <div
             id="days-section"
             tabIndex={-1}
-            className="flex flex-wrap gap-2 pt-1 w-full outline-none"
+            className="grid grid-cols-7 gap-1 pt-1 w-full outline-none"
           >
             {[1, 2, 3, 4, 5, 6, 7].map((day) => {
               const isSelected = availableDays === day;
@@ -567,10 +664,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   key={day}
                   type="button"
                   onClick={() => handleDaySelect(day)}
-                  className={`touch-target min-h-[48px] min-w-[48px] flex-1 rounded-xl flex items-center justify-center font-bold text-sm border transition-all ${
+                  className={`press touch-target mx-auto grid h-12 w-full max-w-12 place-items-center rounded-full font-mono text-sm font-bold transition-all ${
                     isSelected
-                      ? 'bg-brand-primary text-brand-contrast border-brand-primary shadow-md'
-                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
+                      ? 'bg-amber bg-brand-primary text-ink shadow-lg shadow-amber/30 border-brand-primary'
+                      : 'bg-surface-2 border border-line text-content-2 hover:bg-surface-3'
                   }`}
                 >
                   {day}
@@ -586,7 +683,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           subtitle="Seleccioná los implementos a los que tenés acceso"
         >
           {errors.equipment && (
-            <p className="text-xs text-semantic-error-text font-medium mb-2.5">
+            <p className="text-xs text-fatigue-text font-medium mb-2.5">
               {errors.equipment}
             </p>
           )}
@@ -604,15 +701,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   type="button"
                   aria-pressed={isSelected}
                   onClick={() => toggleEquipment(item.id)}
-                  className={`touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-medium transition-all ${
+                  className={`press touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl border text-left flex items-center justify-between text-xs font-semibold transition-all ${
                     isSelected
-                      ? 'bg-brand-primary/15 border-brand-primary text-brand-primary shadow-sm'
-                      : 'bg-surface-2 border-border-interactive text-content-primary hover:border-border-interactive'
+                      ? 'bg-brand/15 border-brand text-content shadow-sm'
+                      : 'bg-surface-2 border-line text-content-2 hover:border-line'
                   }`}
                 >
                   <span className="leading-snug pr-2">{item.name}</span>
                   {isSelected && (
-                    <Check className="w-4 h-4 text-brand-primary shrink-0" />
+                    <Check className="w-4 h-4 text-brand-focus shrink-0 stroke-[3]" />
                   )}
                 </button>
               );
@@ -620,10 +717,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </Card>
 
-        {/* Acciones en Mitad Inferior: Apiladas verticalmente al 100% (RF-04, RF-05, RF-14) */}
+        {/* Acciones en Mitad Inferior: Sticky glass dock apilado verticalmente (T-19, RF-14) */}
         <div
           data-testid="profile-bottom-actions"
-          className="sticky bottom-0 z-30 w-full bg-surface-1/95 backdrop-blur-md border-t border-border-interactive p-3 flex flex-col gap-2.5 rounded-t-2xl shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
+          className="glass sticky bottom-0 z-30 w-full p-3 flex flex-col gap-2.5 rounded-t-2xl border-t border-line shadow-2xl pb-[calc(12px+env(safe-area-inset-bottom))]"
         >
           <Button
             type="submit"
@@ -632,11 +729,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             fullWidth
             isLoading={isSubmitting}
             id="submit-btn"
-            className="shadow-lg min-h-[48px] touch-target"
+            className="press shadow-lg shadow-brand/30 min-h-[48px] touch-target font-bold bg-brand text-content rounded-xl"
           >
             {isEditMode ? 'Guardar Cambios' : 'Crear Perfil y Generar Mesociclo'}
           </Button>
-
 
           {isEditMode && onCancel && (
             <Button
@@ -645,7 +741,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               size="md"
               fullWidth
               onClick={onCancel}
-              className="min-h-[48px] touch-target text-content-secondary"
+              className="press min-h-[48px] touch-target text-content-2 rounded-xl"
             >
               Cancelar
             </Button>
@@ -657,9 +753,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             size="md"
             fullWidth
             onClick={handleLogout}
-            className="min-h-[48px] touch-target"
+            className="press min-h-[48px] touch-target font-bold rounded-xl bg-fatigue/15 text-fatigue-text border border-fatigue/30 hover:bg-fatigue/25"
           >
-            Cerrar Sesión
+            <LogOut className="w-4 h-4 mr-2 inline" />
+            <span>Cerrar Sesión</span>
           </Button>
         </div>
       </form>
@@ -678,7 +775,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               fullWidth
               isLoading={isSubmitting}
               onClick={performSave}
-              className="min-h-[48px] touch-target"
+              className="press min-h-[48px] touch-target font-bold bg-brand shadow-lg shadow-brand/30"
             >
               Confirmar y Guardar
             </Button>
@@ -687,7 +784,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               size="md"
               fullWidth
               onClick={() => setIsGoalChangeModalOpen(false)}
-              className="min-h-[48px] touch-target"
+              className="press min-h-[48px] touch-target"
             >
               Cancelar
             </Button>
@@ -695,26 +792,26 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         }
       >
         <div className="flex flex-col gap-3 py-1">
-          <div className="flex items-center gap-2 p-3 bg-brand-primary/10 border border-brand-primary/30 rounded-xl text-brand-primary text-xs">
-            <AlertTriangle className="w-5 h-5 shrink-0 text-brand-primary" />
+          <div className="flex items-center gap-2 p-3 bg-amber/10 border border-amber/30 rounded-xl text-amber text-xs">
+            <AlertTriangle className="w-5 h-5 shrink-0 text-amber" />
             <span>
               Cambiar tu objetivo de entrenamiento archivará el mesociclo activo y generará un nuevo mesociclo completo de N semanas.
             </span>
           </div>
 
-          <p className="text-xs text-content-secondary leading-relaxed">
+          <p className="text-xs text-content-2 leading-relaxed">
             El historial de cargas y sobrecarga progresiva se preservará para calcular con precisión las cargas de tus nuevos ejercicios.
           </p>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-surface-base border border-border-interactive text-xs mt-1">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-surface-2 border border-line text-xs mt-1">
             <div className="flex flex-col">
-              <span className="text-[10px] text-content-secondary uppercase tracking-wider">Objetivo Actual</span>
-              <span className="font-semibold text-content-primary">{goalLabels[initialGoal]}</span>
+              <span className="text-[10px] text-content-3 uppercase tracking-wider font-semibold">Objetivo Actual</span>
+              <span className="font-bold text-content">{goalLabels[initialGoal]}</span>
             </div>
-            <span className="text-content-secondary font-bold">→</span>
+            <span className="text-content-3 font-bold">→</span>
             <div className="flex flex-col text-right">
-              <span className="text-[10px] text-brand-primary uppercase tracking-wider">Nuevo Objetivo</span>
-              <span className="font-semibold text-brand-primary">{goalLabels[trainingGoal]}</span>
+              <span className="text-[10px] text-brand-focus uppercase tracking-wider font-semibold">Nuevo Objetivo</span>
+              <span className="font-bold text-brand-focus">{goalLabels[trainingGoal]}</span>
             </div>
           </div>
         </div>
@@ -743,7 +840,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                   setIsCancelModalOpen(true);
                 }
               }}
-              className="min-h-[48px] touch-target"
+              className="press min-h-[48px] touch-target font-bold"
             >
               Cancelar mesociclo actual
             </Button>
@@ -758,7 +855,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 }
                 setIsAvailabilityModalOpen(false);
               }}
-              className="min-h-[48px] touch-target"
+              className="press min-h-[48px] touch-target"
             >
               Aplicar para el próximo ciclo
             </Button>
@@ -771,7 +868,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 setIsAvailabilityModalOpen(false);
                 setPendingDays(null);
               }}
-              className="min-h-[48px] touch-target text-content-secondary"
+              className="press min-h-[48px] touch-target text-content-2"
             >
               Mantener días actuales
             </Button>
@@ -779,14 +876,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         }
       >
         <div className="flex flex-col gap-3 py-1 text-xs">
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300">
-            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber/10 border border-amber/30 text-amber">
+            <AlertTriangle className="w-5 h-5 text-amber shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               Una rutina en curso no admite modificaciones estructurales globales en sus días o tiempos de entrenamiento. Te recomendamos cancelar el ciclo actual para generar uno nuevo con los parámetros actualizados.
             </p>
           </div>
 
-          <p className="text-content-secondary leading-relaxed">
+          <p className="text-content-2 leading-relaxed">
             Al cancelar el mesociclo actual, las sesiones y cargas ya completadas se preservarán intactas en tu historial para calibrar tu nuevo ciclo.
           </p>
         </div>

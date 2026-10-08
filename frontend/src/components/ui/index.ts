@@ -7,3 +7,5 @@ export * from './Slider';
 export * from './Toast';
 export * from './Sheet';
 export * from './AlertDialog';
+export * from './Stepper';
+export * from './Sparkline';

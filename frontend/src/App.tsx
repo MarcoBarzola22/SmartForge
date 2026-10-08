@@ -335,6 +335,7 @@ export const App: React.FC = () => {
       title={meta.title}
       subtitle={meta.subtitle}
       isOnline={isOnline}
+      activeTab={activeTab}
       footer={
         <BottomNav
           activeTab={activeTab}

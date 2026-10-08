@@ -8,6 +8,7 @@ import { PainReportModal } from './PainReportModal';
 import { apiClient } from '../../api/client';
 import { queryClient } from '../../api/query-client';
 import { offlineStore } from '../../stores/offlineStore';
+import { cn } from 'cn';
 import type {
   TrainingSession,
   SessionPlan,
@@ -23,12 +24,12 @@ import {
   AlertTriangle,
   Info,
   CheckCircle,
-  Dumbbell,
-  ArrowRight,
   Clock,
   ShieldAlert,
   HeartCrack,
-  Trophy
+  Trophy,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export interface ProgressionDetail {
@@ -69,6 +70,26 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     initialSession.status === 'completed'
   );
   const [isCompletingSession, setIsCompletingSession] = useState<boolean>(false);
+
+  // Live timer state for "EN VIVO" counter
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+
+  useEffect(() => {
+    const startTime = session.started_at ? new Date(session.started_at).getTime() : Date.now();
+    const updateElapsed = () => {
+      const now = Date.now();
+      setElapsedSeconds(Math.max(0, Math.floor((now - startTime) / 1000)));
+    };
+    updateElapsed();
+    const timer = setInterval(updateElapsed, 1000);
+    return () => clearInterval(timer);
+  }, [session.started_at]);
+
+  const formattedElapsed = useMemo(() => {
+    const mm = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+    const ss = String(elapsedSeconds % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }, [elapsedSeconds]);
 
   const assignments = useMemo(() => {
     return sessionPlan.exercise_assignments || [];
@@ -340,18 +361,6 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     return totalVolumeKg.toLocaleString('es-ES', { maximumFractionDigits: 1 });
   }, [totalVolumeKg]);
 
-  const getActionBadgeVariant = (action: string): 'default' | 'success' | 'warning' | 'danger' | 'info' | 'amber' => {
-    switch (action) {
-      case 'increase_load':
-      case 'increase_reps':
-        return 'success';
-      case 'deload':
-        return 'warning';
-      default:
-        return 'default';
-    }
-  };
-
   const getActionLabel = (action: string) => {
     switch (action) {
       case 'increase_load':
@@ -367,15 +376,21 @@ export const SessionPage: React.FC<SessionPageProps> = ({
     }
   };
 
+  // Calculate delta vs target load
+  const deltaLoadKg = useMemo(() => {
+    if (!suggestionDetail || !activeAssignment?.target_load_kg) return 0;
+    return Number((suggestionDetail.suggested_load_kg - activeAssignment.target_load_kg).toFixed(1));
+  }, [suggestionDetail, activeAssignment?.target_load_kg]);
+
   // Render Performance Summary Screen if session is completed
   if (isCompletedView) {
     return (
       <div
         data-testid="session-summary-view"
-        className={`min-h-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-4 ${className}`}
+        className={`min-h-screen bg-ink text-content flex flex-col items-center justify-center p-4 ${className}`}
       >
-        <div className="max-w-md w-full bg-neutral-900 border border-neutral-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 text-center animate-in zoom-in-95 duration-200">
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+        <div className="max-w-md w-full bg-surface-1 border border-line rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 text-center animate-in zoom-in-95 duration-200">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-success/15 border border-success/30 text-success flex items-center justify-center shadow-lg shadow-success/20">
             <Trophy className="w-8 h-8" />
           </div>
 
@@ -383,26 +398,26 @@ export const SessionPage: React.FC<SessionPageProps> = ({
             <Badge variant="success" size="md" className="mb-2">
               ¡Sesión Completada!
             </Badge>
-            <h1 className="text-2xl font-black text-white tracking-tight">
+            <h1 className="text-2xl font-black text-content tracking-tight">
               Resumen de Rendimiento
             </h1>
-            <p className="text-sm text-neutral-400 mt-1">
+            <p className="text-sm text-content-2 mt-1">
               {sessionPlan.name} • Día {sessionPlan.day_number}
             </p>
           </div>
 
           {/* Key Metrics Cards */}
           <div className="grid grid-cols-2 gap-3 text-left">
-            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col gap-1">
-              <span className="text-xs text-neutral-400 font-medium">Volumen Total</span>
-              <span className="text-xl font-bold font-mono text-emerald-400">
+            <div className="p-4 rounded-2xl bg-surface-2 border border-line flex flex-col gap-1">
+              <span className="text-xs text-content-2 font-medium">Volumen Total</span>
+              <span className="text-xl font-bold font-mono text-neon">
                 {formattedVolume} kg
               </span>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 flex flex-col gap-1">
-              <span className="text-xs text-neutral-400 font-medium">Series Realizadas</span>
-              <span className="text-xl font-bold font-mono text-white">
+            <div className="p-4 rounded-2xl bg-surface-2 border border-line flex flex-col gap-1">
+              <span className="text-xs text-content-2 font-medium">Series Realizadas</span>
+              <span className="text-xl font-bold font-mono text-content">
                 {totalCompletedSets} / {totalTargetSets}
               </span>
             </div>
@@ -410,7 +425,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
 
           {/* Breakdown per exercise */}
           <div className="text-left space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-content-2 block">
               Desglose de Ejercicios
             </span>
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
@@ -421,20 +436,20 @@ export const SessionPage: React.FC<SessionPageProps> = ({
                 return (
                   <div
                     key={idx}
-                    className="p-3 bg-neutral-950/70 border border-neutral-800/80 rounded-xl flex items-center justify-between text-xs"
+                    className="p-3 bg-surface-2/70 border border-line rounded-xl flex items-center justify-between text-xs"
                   >
                     <div>
-                      <div className="font-semibold text-neutral-200">
+                      <div className="font-semibold text-content">
                         {assignment.exercise?.name || `Ejercicio ${idx + 1}`}
                       </div>
-                      <div className="text-neutral-500 font-mono text-[11px] mt-0.5">
+                      <div className="text-content-3 font-mono text-[11px] mt-0.5">
                         {sets.length} de {assignment.target_sets} series completadas
                       </div>
                     </div>
                     {sets.length >= assignment.target_sets ? (
-                      <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <CheckCircle className="w-4 h-4 text-success shrink-0" />
                     ) : (
-                      <span className="text-neutral-500 font-mono">{sets.length}/{assignment.target_sets}</span>
+                      <span className="text-content-3 font-mono">{sets.length}/{assignment.target_sets}</span>
                     )}
                   </div>
                 );
@@ -446,7 +461,7 @@ export const SessionPage: React.FC<SessionPageProps> = ({
           <Button
             variant="primary"
             onClick={onFinishSession || (() => {})}
-            className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-950/50"
+            className="w-full min-h-[48px] bg-brand hover:bg-brand/90 text-content font-bold rounded-xl shadow-lg shadow-brand/30 press"
           >
             Volver al Mesociclo
           </Button>
@@ -456,52 +471,101 @@ export const SessionPage: React.FC<SessionPageProps> = ({
   }
 
   return (
-    <div className={`min-h-screen bg-neutral-950 text-neutral-100 flex flex-col ${className}`}>
-      {/* Session Header */}
-      <header className="sticky top-0 z-30 bg-neutral-900/90 backdrop-blur-md border-b border-neutral-800 p-4">
-        <div className="max-w-4xl mx-auto flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h1 className="text-xl font-bold text-white tracking-tight">Sesión en Curso</h1>
-              </div>
-              <p className="text-sm text-neutral-400 font-medium mt-0.5">
-                <span>{sessionPlan.name}</span>
-                <span className="mx-1.5">•</span>
-                <span>Día {sessionPlan.day_number}</span>
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCompleteSession}
-              isLoading={isCompletingSession || completeSessionMutation.isPending}
-              disabled={isCompletingSession || completeSessionMutation.isPending}
-              className="text-xs border-emerald-600/50 text-emerald-400 hover:bg-emerald-950/40 touch-target min-h-[48px]"
-            >
-              Finalizar Sesión
-            </Button>
-          </div>
-
-          {/* Session Progress Bar */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs text-neutral-400">
-              <span>Progreso de series</span>
-              <span className="font-mono font-medium text-emerald-400">
-                {totalCompletedSets} / {totalTargetSets} ({progressPercent}%)
+    <div className={`min-h-screen bg-ink text-content flex flex-col space-y-4 ${className}`}>
+      {/* Session Header estilo Lovable: glass sticky, beacon EN VIVO y progress-gradient */}
+      <header className="glass sticky top-0 z-20 -mx-4 -mt-4 border-b border-white/5 px-4 pb-3 pt-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 text-[11px] font-bold tracking-wider text-success">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-success" />
+                </span>
+                EN VIVO · <span className="font-mono">{formattedElapsed}</span>
               </span>
+              <span className="text-content-3">·</span>
+              <h1 className="text-base font-bold text-content tracking-tight">Sesión en Curso</h1>
             </div>
-            <div className="h-2 w-full bg-neutral-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+            <p className="text-xs text-content-2 font-medium mt-0.5">
+              <span>{sessionPlan.name}</span>
+              <span className="mx-1.5">•</span>
+              <span>Día {sessionPlan.day_number}</span>
+            </p>
           </div>
 
-          {/* Exercise Tabs Navigator */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+          <button
+            type="button"
+            onClick={handleCompleteSession}
+            disabled={isCompletingSession || completeSessionMutation.isPending}
+            className="press min-h-12 rounded-xl bg-fatigue/15 px-4 text-[13px] font-bold text-fatigue-text touch-target flex items-center justify-center shrink-0 disabled:opacity-50"
+          >
+            {isCompletingSession || completeSessionMutation.isPending ? 'Finalizando...' : 'Finalizar Sesión'}
+          </button>
+        </div>
+
+        {/* Barra animada de progreso de la sesión */}
+        <div className="mt-2 space-y-1">
+          <div className="flex justify-between text-xs text-content-2">
+            <span>Progreso de series</span>
+            <span className="font-mono font-medium text-neon">
+              {totalCompletedSets} / {totalTargetSets} ({progressPercent}%)
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="progress-gradient h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.min(progressPercent, 100)}%` }}
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 w-full flex flex-col gap-4">
+        {errorMessage && (
+          <div className="p-3 bg-fatigue/15 border border-fatigue/40 rounded-xl text-fatigue-text text-sm flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Selector de Ejercicios estilo Lovable: tarjeta con Chevrons 48x48px + Tabs de navegación rápida */}
+        <div className="flex flex-col gap-2 w-full">
+          <section className="animate-in fade-in slide-in-from-bottom-2 duration-200 grid grid-cols-[48px_minmax(0,1fr)_48px] items-center gap-2 rounded-2xl border border-line bg-surface-1 p-2 shadow-lg shadow-brand/5">
+            <button
+              type="button"
+              aria-label="Ejercicio anterior"
+              disabled={selectedExerciseIndex === 0}
+              onClick={() => setSelectedExerciseIndex((prev) => Math.max(0, prev - 1))}
+              className="press grid h-12 w-12 place-items-center rounded-xl bg-surface-2 text-content disabled:opacity-30 touch-target"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="min-w-0 text-center">
+              <p className="text-[11px] text-content-2">
+                Ejercicio <span className="font-mono">{selectedExerciseIndex + 1}/{assignments.length}</span>
+              </p>
+              <h2
+                key={selectedExerciseIndex}
+                className="animate-in fade-in duration-200 truncate text-lg font-extrabold tracking-tight text-content"
+              >
+                {activeAssignment?.exercise?.name || `Ejercicio ${selectedExerciseIndex + 1}`}
+              </h2>
+            </div>
+            <button
+              type="button"
+              aria-label="Ejercicio siguiente"
+              disabled={selectedExerciseIndex >= assignments.length - 1}
+              onClick={() => setSelectedExerciseIndex((prev) => Math.min(assignments.length - 1, prev + 1))}
+              className="press grid h-12 w-12 place-items-center rounded-xl bg-surface-2 text-content disabled:opacity-30 touch-target"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </section>
+
+          {/* Pills de acceso rápido por ejercicio */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-0.5">
             {assignments.map((assignment, index) => {
               const isSelected = index === selectedExerciseIndex;
               const setsDone = (session.set_logs || []).filter(
@@ -513,22 +577,24 @@ export const SessionPage: React.FC<SessionPageProps> = ({
               return (
                 <button
                   key={assignment.id}
+                  type="button"
                   onClick={() => setSelectedExerciseIndex(index)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap touch-target min-h-[48px] transition-all border ${
+                  className={cn(
+                    'press flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap touch-target min-h-[48px] transition-all border shrink-0 select-none',
                     isSelected
-                      ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-900/30'
+                      ? 'bg-brand text-content border-brand shadow-lg shadow-brand/30'
                       : isCompleted
-                      ? 'bg-neutral-800/80 text-emerald-300 border-emerald-800/40 hover:bg-neutral-800'
-                      : 'bg-neutral-900 text-neutral-400 border-neutral-800 hover:bg-neutral-800/60'
-                  }`}
+                      ? 'bg-surface-2 text-success border-success/30 hover:bg-surface-2/80'
+                      : 'bg-surface-1 text-content-3 border-line hover:text-content'
+                  )}
                 >
                   <span>
                     {index + 1}. {shortName}
                   </span>
                   {isCompleted ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 ml-1" />
+                    <CheckCircle className="w-3.5 h-3.5 text-success ml-1" />
                   ) : (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-black/30 font-mono">
+                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-black/40 font-mono text-content-2">
                       {setsDone}/{assignment.target_sets}
                     </span>
                   )}
@@ -537,18 +603,8 @@ export const SessionPage: React.FC<SessionPageProps> = ({
             })}
           </div>
         </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col gap-5">
-        {errorMessage && (
-          <div className="p-3 bg-red-950/80 border border-red-800 rounded-lg text-red-200 text-sm flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
-
-        {/* Real-time Pain & Fatigue Adjustment Banner (RF-08, CA-08.1, CA-08.2, CA-08.3) */}
+        {/* Alerta Técnica y Molestias Articulares (RF-08, CA-08.1, CA-08.2, CA-08.3) con estilo border-l-4 de Lovable */}
         {relevantJointPains.length > 0 && (
           <div className="flex flex-col gap-2">
             {relevantJointPains.map((pain, idx) => {
@@ -557,10 +613,10 @@ export const SessionPage: React.FC<SessionPageProps> = ({
               const isLight = pain.intensity === 'leve';
 
               const bannerColor = isSevere
-                ? 'bg-red-950/80 border-red-700/80 text-red-200'
+                ? 'border-fatigue bg-fatigue/10 text-fatigue-text'
                 : isModerate
-                ? 'bg-amber-950/80 border-amber-700/80 text-amber-200'
-                : 'bg-blue-950/70 border-blue-700/60 text-blue-200';
+                ? 'border-amber bg-amber/10 text-amber'
+                : 'border-brand bg-brand/10 text-brand-focus';
 
               const IconComponent = isSevere
                 ? ShieldAlert
@@ -569,19 +625,22 @@ export const SessionPage: React.FC<SessionPageProps> = ({
                 : Info;
 
               return (
-                <div
+                <section
                   key={idx}
                   data-testid="pain-adjustment-banner"
-                  className={`p-4 rounded-xl border flex items-start gap-3 shadow-lg ${bannerColor}`}
+                  className={cn(
+                    'animate-in fade-in slide-in-from-bottom-2 duration-200 flex gap-3 rounded-2xl border-l-4 p-3.5 shadow-lg',
+                    bannerColor
+                  )}
                 >
-                  <IconComponent className="w-5 h-5 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <div className="font-semibold text-sm">
+                  <IconComponent className="h-6 w-6 shrink-0 mt-0.5" />
+                  <div className="space-y-1 text-[13px] leading-relaxed">
+                    <div className="font-bold">
                       {isSevere && `Alerta de dolor severo en ${pain.joint} (${pain.side})`}
                       {isModerate && `Aviso de molestia moderada en ${pain.joint} (${pain.side})`}
                       {isLight && `Molestia leve en ${pain.joint} (${pain.side})`}
                     </div>
-                    <p className="text-xs opacity-90 leading-relaxed">
+                    <p className="text-content-2">
                       {isSevere &&
                         'Se recomienda sustituir este ejercicio por una variante segura o excluir el patrón articular para prevenir lesiones.'}
                       {isModerate &&
@@ -590,98 +649,103 @@ export const SessionPage: React.FC<SessionPageProps> = ({
                         'Se mantiene la carga planificada para seguimiento. Si la molestia aumenta durante las series, detén el ejercicio.'}
                     </p>
                   </div>
-                </div>
+                </section>
               );
             })}
           </div>
         )}
 
-        {/* Active Exercise Progression Suggestion Card (RF-07, CA-07.1) */}
+        {/* Tarjeta de Sobrecarga Progresiva Sugerida (RF-07, CA-07.1) estilo exacto Lovable */}
         {activeAssignment && (
           <Card
             data-testid="progression-suggestion-card"
-            className="bg-neutral-900/90 border-neutral-800 rounded-xl shadow-xl relative min-w-0 flex flex-col gap-4 w-full p-4 overflow-hidden"
+            className="animate-in fade-in slide-in-from-bottom-2 duration-200 overflow-hidden rounded-2xl border border-line bg-surface-elevated shadow-lg shadow-neon/10 p-0 relative min-w-0 flex flex-col w-full"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+            {/* Línea corona luminosa superior */}
+            <div className="top-gradient h-1" />
 
-            {/* Encabezado y Texto en bloque (w-full), sin botones a los costados */}
-            <div className="w-full flex flex-col gap-1 border-b border-neutral-800/80 pb-3">
-              <div className="flex items-center gap-2 w-full min-w-0">
-                <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0 flex-shrink-0" />
-                <h2 className="text-base font-semibold text-white">Sobrecarga Progresiva Sugerida</h2>
-              </div>
-              <p className="w-full text-sm text-neutral-400 whitespace-normal break-words text-left">
-                Recomendación basada en el historial de rendimiento de las últimas sesiones
+            <div className="space-y-3 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-content-2">
+                Sobrecarga Progresiva Sugerida
               </p>
-            </div>
 
-            {isLoadingSuggestion ? (
-              <div className="py-4 flex items-center justify-center gap-2 text-neutral-400 text-sm animate-pulse">
-                <Clock className="w-4 h-4 shrink-0 flex-shrink-0" />
-                <span>Calculando sugerencia de progresión...</span>
-              </div>
-            ) : suggestionDetail ? (
-              <>
-                {/* Grid de Métricas (2 mini-cards) */}
-                <div className="grid grid-cols-2 gap-2 w-full mt-4">
-                  {/* Fila 1 - Columna 1: Carga Sugerida */}
-                  <div className="flex items-center gap-2 p-2 bg-neutral-950/60 rounded-xl border border-neutral-800 min-w-0">
-                    <div className="p-1.5 bg-emerald-950/60 text-emerald-400 rounded-lg border border-emerald-800/40 shrink-0 flex-shrink-0">
-                      <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 flex-shrink-0" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] sm:text-xs text-neutral-400 leading-tight">Carga Sugerida</div>
-                      <div className="text-base sm:text-lg font-bold font-mono text-white">
-                        {suggestionDetail.suggested_load_kg} kg
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Fila 1 - Columna 2: Repeticiones */}
-                  <div className="flex items-center gap-2 p-2 bg-neutral-950/60 rounded-xl border border-neutral-800 min-w-0">
-                    <div className="p-1.5 bg-blue-950/60 text-blue-400 rounded-lg border border-blue-800/40 shrink-0 flex-shrink-0">
-                      <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 flex-shrink-0" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] sm:text-xs text-neutral-400 leading-tight">Repeticiones</div>
-                      <div className="text-base sm:text-lg font-bold font-mono text-white">
-                        {suggestionDetail.suggested_reps} reps
-                      </div>
-                    </div>
-                  </div>
+              {isLoadingSuggestion ? (
+                <div className="py-4 flex items-center justify-center gap-2 text-content-2 text-sm animate-pulse">
+                  <Clock className="w-4 h-4 shrink-0" />
+                  <span>Calculando sugerencia de progresión...</span>
                 </div>
+              ) : suggestionDetail ? (
+                <>
+                  {/* Badge de acción animado con pulso */}
+                  <div
+                    className={cn(
+                      'flex min-h-12 w-full animate-pulse items-center justify-center gap-2 rounded-full text-[13px] font-extrabold uppercase tracking-wide shadow-lg',
+                      suggestionDetail.action === 'increase_load' || suggestionDetail.action === 'increase_reps'
+                        ? 'bg-neon/15 text-neon shadow-neon/20'
+                        : suggestionDetail.action === 'deload'
+                        ? 'bg-amber/15 text-amber shadow-amber/20'
+                        : 'bg-surface-2 text-content-2'
+                    )}
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    <span>{getActionLabel(suggestionDetail.action)}</span>
+                  </div>
 
-                {suggestionDetail.reason_es && (
-                  <span className="sr-only">{suggestionDetail.reason_es}</span>
-                )}
+                  {/* Bloque Carga Sugerida */}
+                  <div className="rounded-xl bg-surface-2 p-3">
+                    <p className="text-[11px] text-content-2">Carga sugerida</p>
+                    <p className="font-mono text-4xl font-bold text-content">
+                      {suggestionDetail.suggested_load_kg} <span className="text-sm text-content-2 font-sans">kg</span>
+                    </p>
+                    {deltaLoadKg > 0 ? (
+                      <p className="mt-1 text-[11px] font-bold text-neon">
+                        +{deltaLoadKg} kg vs. sesión anterior
+                      </p>
+                    ) : deltaLoadKg < 0 ? (
+                      <p className="mt-1 text-[11px] font-bold text-amber">
+                        {deltaLoadKg} kg vs. sesión anterior
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[11px] font-bold text-content-3">
+                        Misma carga vs. sesión anterior
+                      </p>
+                    )}
+                  </div>
 
-                {/* Botones de Acción apilados verticalmente */}
-                <div className="flex flex-col gap-2 w-full mt-4">
-                  {suggestionDetail && (
-                    <Badge
-                      variant={getActionBadgeVariant(suggestionDetail.action)}
-                      className="w-full justify-center font-semibold text-xs py-2.5 min-h-[48px] rounded-xl flex items-center shrink-0"
-                    >
-                      {getActionLabel(suggestionDetail.action)}
-                    </Badge>
+                  {/* Bloque Objetivo */}
+                  <div className="rounded-xl bg-surface-2 p-3">
+                    <p className="text-[11px] text-content-2">Objetivo</p>
+                    <p className="font-mono text-2xl font-bold text-content">
+                      {activeAssignment.target_sets} × {suggestionDetail.suggested_reps}{' '}
+                      <span className="text-sm text-content-2 font-sans">@ RIR {activeAssignment.target_rir}</span>
+                    </p>
+                  </div>
+
+                  {/* Justificación técnica en prosa (visible obligatoriamente por RF-07) */}
+                  {suggestionDetail.reason_es && (
+                    <p className="text-[13px] leading-relaxed text-content-2">
+                      <span className="font-bold text-content">Por qué: </span>
+                      {suggestionDetail.reason_es}
+                    </p>
                   )}
-                  {/* Optional Pain Report Button (RF-06, CA-06.1) */}
+
+                  {/* Botón de reporte de molestia */}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsPainModalOpen(true)}
-                    className="w-full text-xs text-neutral-400 hover:text-red-400 hover:bg-red-950/30 flex items-center justify-center gap-1.5 touch-target min-h-[48px] px-3 shrink-0 rounded-xl border border-neutral-800/80"
+                    className="w-full text-xs text-content-2 hover:text-fatigue-text hover:bg-fatigue/15 flex items-center justify-center gap-1.5 touch-target min-h-[48px] px-3 shrink-0 rounded-xl border border-line"
                   >
-                    <HeartCrack className="w-3.5 h-3.5 text-red-400 shrink-0 flex-shrink-0" />
+                    <HeartCrack className="w-3.5 h-3.5 text-fatigue-text shrink-0" />
                     <span className="whitespace-nowrap">Reportar Molestia</span>
                   </Button>
+                </>
+              ) : (
+                <div className="text-xs text-content-2 py-2">
+                  Objetivo estándar del plan: {activeAssignment.target_sets} series × {activeAssignment.target_reps} reps @ {activeAssignment.target_load_kg} kg (RIR {activeAssignment.target_rir}).
                 </div>
-              </>
-            ) : (
-              <div className="text-xs text-neutral-400 py-2">
-                Objetivo estándar del plan: {activeAssignment.target_sets} series × {activeAssignment.target_reps} reps @ {activeAssignment.target_load_kg} kg (RIR {activeAssignment.target_rir}).
-              </div>
-            )}
+              )}
+            </div>
           </Card>
         )}
 

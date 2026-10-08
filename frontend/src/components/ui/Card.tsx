@@ -8,7 +8,15 @@ export interface CardProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 't
   footer?: React.ReactNode;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   children?: React.ReactNode;
+  variant?: 'default' | 'hero' | 'elevated' | 'glass';
 }
+
+const cardVariantStyles = {
+  default: 'bg-surface-1 border-border-subtle shadow-lg shadow-brand/5',
+  hero: 'hero-gradient border-border-subtle shadow-lg shadow-brand/10',
+  elevated: 'bg-surface-elevated border-border-subtle shadow-lg shadow-neon/10',
+  glass: 'glass border-white/5 shadow-xl',
+};
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
   (
@@ -18,6 +26,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       headerAction,
       footer,
       onClick,
+      variant = 'default',
       className = '',
       children,
       ...props
@@ -31,13 +40,18 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         onClick={onClick}
         className={cn(
-          "w-full overflow-hidden rounded-xl bg-surface-1 border border-border-subtle p-4 shadow-sm text-content-primary transition-all duration-150 break-words min-w-0",
+          "w-full overflow-hidden rounded-xl md:rounded-2xl border p-4 text-content-primary transition-all duration-150 break-words min-w-0",
+          cardVariantStyles[variant] || cardVariantStyles.default,
           isClickable &&
-            "cursor-pointer hover:border-border-interactive hover:bg-surface-2 active:scale-[0.99] min-h-[48px] touch-target select-none",
+            "cursor-pointer hover:border-border-interactive hover:bg-surface-2 press min-h-[48px] touch-target select-none",
           className
         )}
         {...props}
       >
+        {variant === 'elevated' && (
+          <div className="top-gradient h-1 -mx-4 -mt-4 mb-3" />
+        )}
+
         {(title || headerAction) && (
           <div className="flex items-center justify-between pb-2 mb-2 border-b border-border-subtle/40 min-w-0 gap-2">
             <div className="min-w-0 flex-1">

@@ -13,6 +13,7 @@ export interface MobileLayoutProps {
   footer?: React.ReactNode;
   keyboardActionBar?: React.ReactNode;
   toastContent?: React.ReactNode;
+  activeTab?: string;
   className?: string;
 }
 
@@ -25,15 +26,16 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   footer,
   keyboardActionBar,
   toastContent,
+  activeTab,
   className = ''
 }) => {
   const { isKeyboardOpen, availableHeight } = useVisualViewport(64);
 
   return (
-    <div className="min-h-screen bg-black flex justify-center w-full select-none">
+    <div className="min-h-screen overflow-x-hidden bg-shell flex justify-center w-full select-none">
       <div
         data-testid="mobile-container"
-        className="w-full max-w-[390px] min-h-screen bg-surface-base text-content-primary flex flex-col shadow-2xl relative overflow-x-hidden border-x border-border-subtle"
+        className="w-full max-w-[390px] min-h-screen bg-ink text-content-primary flex flex-col relative overflow-x-hidden border-x border-line/40 shadow-2xl"
       >
         {/* Header contextual simplificado con safe-area */}
         <StatusBar
@@ -48,7 +50,8 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
           role="main"
           style={isKeyboardOpen ? { maxHeight: `${availableHeight}px` } : undefined}
           className={cn(
-            'flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-4 pb-16 w-full',
+            'flex-1 flex flex-col overflow-y-auto overflow-x-hidden p-4 w-full',
+            activeTab === 'session' ? 'pb-56' : 'pb-28',
             className
           )}
         >

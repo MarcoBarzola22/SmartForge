@@ -1,7 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card } from '../../components/ui/Card';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
 import { Toast } from '../../components/ui/Toast';
 import { apiClient } from '../../api/client';
 import { queryClient } from '../../api/query-client';
@@ -16,10 +13,15 @@ import {
   Zap,
   Activity,
   ChevronRight,
-  TrendingUp,
-  ShieldCheck,
+  Target,
+  Flame,
   CheckCircle2,
-  CalendarX
+  CalendarX,
+  Play,
+  ArrowUpFromLine,
+  ArrowDownToLine,
+  Footprints,
+  Dumbbell
 } from 'lucide-react';
 import { EmptyMesocycleState } from '../../components/mesocycle/EmptyMesocycleState';
 import { CancellationModal } from '../../components/mesocycle/CancellationModal';
@@ -32,6 +34,43 @@ export interface MesocyclePageProps {
   onNavigateToRoutineEditor?: (sessionPlanId: string) => void;
   onNavigateToHistory?: () => void;
   onNavigateToProfile?: () => void;
+}
+
+function getSessionIcon(session: SessionPlan) {
+  const patterns = session.exercise_assignments?.map(
+    (a) => a.exercise?.movement_pattern || ''
+  ) || [];
+  const muscles = session.exercise_assignments?.map(
+    (a) => a.exercise?.primary_muscle || ''
+  ) || [];
+  const allText = `${session.name} ${patterns.join(' ')} ${muscles.join(' ')}`.toLowerCase();
+
+  if (
+    allText.includes('empuje') ||
+    allText.includes('pecho') ||
+    allText.includes('hombro') ||
+    allText.includes('triceps')
+  ) {
+    return ArrowUpFromLine;
+  }
+  if (
+    allText.includes('tiron') ||
+    allText.includes('tirón') ||
+    allText.includes('espalda') ||
+    allText.includes('biceps')
+  ) {
+    return ArrowDownToLine;
+  }
+  if (
+    allText.includes('pierna') ||
+    allText.includes('rodilla') ||
+    allText.includes('cadera') ||
+    allText.includes('cuadriceps') ||
+    allText.includes('sentadilla')
+  ) {
+    return Footprints;
+  }
+  return Dumbbell;
 }
 
 export const MesocyclePage: React.FC<MesocyclePageProps> = ({
@@ -145,6 +184,20 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
     );
   }, [mesocycle, selectedWeekNumber]);
 
+  // Calculate mesocycle progress percentage
+  const progressPercent = useMemo(() => {
+    if (!mesocycle?.weeks || mesocycle.weeks.length === 0) return 0;
+    const allSessions = mesocycle.weeks.flatMap((w) => w.sessions || []);
+    if (allSessions.length === 0) return 0;
+    const doneCount = allSessions.filter(
+      (s) =>
+        (s as any).is_completed ||
+        (s as any).status === 'completed' ||
+        completedPlanIds.includes(s.id)
+    ).length;
+    return Math.round((doneCount / allSessions.length) * 100);
+  }, [mesocycle, completedPlanIds]);
+
   // Movement patterns summary for the selected week
   const patternCounts = useMemo(() => {
     if (!selectedWeek?.sessions) return {};
@@ -175,10 +228,10 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
         data-testid="mesocycle-loading-state"
         className="w-full max-w-[390px] mx-auto flex flex-col gap-4 py-4 animate-pulse overflow-x-hidden"
       >
-        <div className="h-28 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
-        <div className="h-12 bg-zinc-900 rounded-xl border border-zinc-800/80" />
-        <div className="h-44 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
-        <div className="h-44 bg-zinc-900 rounded-2xl border border-zinc-800/80" />
+        <div className="h-44 bg-surface-1 rounded-2xl border border-line" />
+        <div className="h-12 bg-surface-1 rounded-xl border border-line" />
+        <div className="h-44 bg-surface-1 rounded-2xl border border-line" />
+        <div className="h-44 bg-surface-1 rounded-2xl border border-line" />
       </div>
     );
   }
@@ -240,329 +293,323 @@ export const MesocyclePage: React.FC<MesocyclePageProps> = ({
         />
       )}
 
-      {/* Mesocycle Header Summary (RF-02) */}
-      <Card>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/90">
-                Plan Activo
-              </span>
-              <h2 className="text-base font-bold text-zinc-100 mt-0.5 leading-snug">
-                {mesocycle.name}
-              </h2>
-            </div>
-            <Badge variant="success" size="sm">
-              Activo
-            </Badge>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <Badge variant="default" size="sm">
-              {mesocycle.periodization_type === 'ondulante' ? 'Ondulante' : 'Lineal'}
-            </Badge>
-            <Badge variant="default" size="sm">
-              {mesocycle.training_goal === 'hipertrofia'
-                ? 'Hipertrofia'
-                : mesocycle.training_goal === 'fuerza'
-                ? 'Fuerza'
-                : 'Mixto'}
-            </Badge>
-            <Badge variant="default" size="sm">
-              Nivel {mesocycle.experience_level}
-            </Badge>
-            <Badge variant="default" size="sm">
-              {mesocycle.duration_weeks} semanas
-            </Badge>
-          </div>
-
-          {/* Botón de anulación / cancelación del ciclo activo (RF-07, TASK-39) */}
-          <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setIsCancelModalOpen(true)}
-              className="touch-target min-h-[48px] px-3.5 py-2.5 rounded-xl text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 hover:border-red-500/50 transition-colors flex items-center gap-2"
+      {/* Mesocycle Hero Gradient Card (RF-02, T-16) */}
+      <section className="hero-gradient animate-in fade-in slide-in-from-bottom-2 duration-200 rounded-2xl border border-line p-4 shadow-lg shadow-brand/10">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-content-2">
+            Mesociclo activo
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-3 py-1 text-[11px] font-bold text-success shadow-lg shadow-success/20">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-success" /> Activo
+          </span>
+        </div>
+        <h1 className="mt-2 text-xl font-extrabold tracking-tight text-content">
+          {mesocycle.name}
+        </h1>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {[
+            {
+              i: Calendar,
+              t: `${mesocycle.duration_weeks} semanas`
+            },
+            {
+              i: Target,
+              t:
+                mesocycle.training_goal === 'hipertrofia'
+                  ? 'Hipertrofia'
+                  : mesocycle.training_goal === 'fuerza'
+                  ? 'Fuerza'
+                  : 'Mixto'
+            },
+            {
+              i: Flame,
+              t: mesocycle.periodization_type === 'ondulante' ? 'Ondulante' : 'Lineal'
+            }
+          ].map(({ i: Icon, t }) => (
+            <span
+              key={t}
+              className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1 text-[11px] text-content-2"
             >
-              <CalendarX className="w-4 h-4 text-red-400" />
-              <span>Cancelar mesociclo actual</span>
-            </button>
-          </div>
+              <Icon className="h-3 w-3" /> {t}
+            </span>
+          ))}
         </div>
-      </Card>
-
-        {/* Week Selector / Carousel (RF-02) */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
-              Semanas del Mesociclo
-            </span>
-            <span className="text-[11px] text-zinc-500 font-medium">
-              Semana {selectedWeekNumber} de {mesocycle.duration_weeks}
-            </span>
+        <div className="mt-4">
+          <div className="flex justify-between text-[11px] text-content-2">
+            <span>Progreso</span>
+            <span className="font-mono font-semibold text-content">{progressPercent}%</span>
           </div>
-
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {mesocycle.weeks?.map((w) => {
-              const isSelected = w.week_number === selectedWeekNumber;
-              return (
-                <button
-                  key={w.id || w.week_number}
-                  type="button"
-                  onClick={() => setSelectedWeekNumber(w.week_number)}
-                  className={`touch-target min-h-[48px] px-3.5 py-2 rounded-xl text-xs font-semibold shrink-0 border transition-all flex items-center gap-2 ${
-                    isSelected
-                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/10'
-                      : 'bg-zinc-900/90 text-zinc-300 border-zinc-800 hover:border-zinc-700'
-                  }`}
-                >
-                  <span>Semana {w.week_number}</span>
-                  {w.is_deload && (
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded-full uppercase font-extrabold ${
-                        isSelected
-                          ? 'bg-zinc-950/20 text-zinc-950'
-                          : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                      }`}
-                    >
-                      Deload
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Deload Notice Banner (RF-10, CA-10.2) */}
-        {selectedWeek?.is_deload && (
-          <div
-            data-testid="deload-banner"
-            className="flex items-start gap-3.5 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/40 text-amber-200 shadow-lg shadow-amber-500/5 animate-in fade-in duration-200"
-          >
-            <Zap className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-amber-300 uppercase tracking-wide">
-                Semana de Descarga (Deload)
-              </span>
-              <p className="text-xs text-amber-200/90 leading-relaxed">
-                Reducción de volumen (−40%) e intensidad (−10%) para facilitar la recuperación neuromuscular y supercompensación.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Movement Patterns Summary (RF-02) */}
-        {Object.keys(patternCounts).length > 0 && (
-          <Card title="Distribución de patrones" subtitle="Volumen muscular semanal">
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {(Object.entries(patternCounts) as [MovementPattern, number][]).map(
-                ([pattern, count]) => (
-                  <div
-                    key={pattern}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800/90 text-xs font-medium text-zinc-300"
-                  >
-                    <Activity className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{patternLabels[pattern] || pattern}</span>
-                    <span className="text-[10px] font-bold text-zinc-500 bg-zinc-900 px-1.5 py-0.2 rounded">
-                      {count} {count === 1 ? 'ejercicio' : 'ejercicios'}
-                    </span>
-                  </div>
-                )
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* Planned Sessions for the Selected Week (RF-02) */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-              Sesiones Planificadas
-            </span>
-            <span className="text-[11px] text-zinc-500 font-medium">
-              {selectedWeek?.sessions?.length || 0} sesiones
-            </span>
-          </div>
-
-          {selectedWeek?.sessions && selectedWeek.sessions.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {selectedWeek.sessions.map((session) => {
-                const isSessionCompleted = Boolean(
-                  (session as any).is_completed ||
-                  (session as any).status === 'completed' ||
-                  completedPlanIds.includes(session.id)
-                );
-
-                return (
-                  <div
-                    key={session.id}
-                    className={`p-4 rounded-2xl bg-zinc-900 border transition-all hover:border-zinc-700 shadow-sm flex flex-col gap-3 ${
-                      isSessionCompleted ? 'border-emerald-500/30 bg-zinc-900/95' : 'border-zinc-800/90'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                            Día {session.day_number}
-                          </span>
-                          {isSessionCompleted && (
-                            <Badge
-                              variant="success"
-                              size="sm"
-                              className="bg-emerald-950/80 text-emerald-400 border-emerald-500/40 flex items-center gap-1 font-medium text-[10px] px-2 py-0.5"
-                            >
-                              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                              <span>Completado</span>
-                            </Badge>
-                          )}
-                        </div>
-                        <h3 className="text-sm font-bold text-zinc-100 mt-0.5">
-                          {session.name}
-                        </h3>
-                      </div>
-
-                      <button
-                        type="button"
-                        aria-label={`Ver detalles de sesión ${session.name}`}
-                        onClick={() => {
-                          onSelectSession?.(session);
-                          onNavigateToRoutineEditor?.(session.id);
-                        }}
-                        className="touch-target min-h-[48px] min-w-[48px] inline-flex items-center justify-center p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {/* Exercises list in session */}
-                    {session.exercise_assignments &&
-                    session.exercise_assignments.length > 0 ? (
-                      <div className="flex flex-col gap-2 pt-1 border-t border-zinc-800/70">
-                        {session.exercise_assignments.map((assign, idx) => (
-                          <div
-                            key={assign.id || idx}
-                            className="flex items-center justify-between text-xs py-1 px-1 rounded-lg hover:bg-zinc-800/40 transition-colors"
-                          >
-                            <div className="flex items-center gap-2 overflow-hidden pr-2">
-                              <span className="text-[11px] font-semibold text-zinc-500 shrink-0 w-4 text-center">
-                                {idx + 1}.
-                              </span>
-                              <span className="font-medium text-zinc-200 truncate">
-                                {assign.exercise?.name || 'Ejercicio'}
-                              </span>
-                              {assign.is_swapped && (
-                                <Badge variant="warning" size="sm">
-                                  Reemplazado
-                                </Badge>
-                              )}
-                            </div>
-
-                            <div className="text-right shrink-0 text-zinc-400 text-[11px] font-mono">
-                              <span className="font-semibold text-amber-300">
-                                {assign.target_sets} × {assign.target_reps}
-                              </span>
-                              {assign.target_load_kg > 0 && (
-                                <span className="ml-1 text-zinc-300">
-                                  @ {assign.target_load_kg}kg
-                                </span>
-                              )}
-                              <span className="ml-1 text-zinc-500">
-                                (RIR {assign.target_rir})
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-zinc-500 italic py-1">
-                        Sin ejercicios asignados.
-                      </p>
-                    )}
-
-                    {/* Start session action */}
-                    {onStartSession && (
-                      <div className="pt-2">
-                        {isSessionCompleted ? (
-                          <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
-                            <span className="flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                              Día Completado
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onStartSession(session.id)}
-                              className="text-xs text-zinc-400 hover:text-white h-9 min-h-[36px] px-2.5"
-                            >
-                              Repetir
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="md"
-                            fullWidth
-                            onClick={() => onStartSession(session.id)}
-                            iconLeft={<ShieldCheck className="w-4 h-4" />}
-                          >
-                            Iniciar Sesión
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-xs text-zinc-500 italic py-4 text-center">
-              No hay sesiones planificadas para esta semana.
-            </p>
-          )}
-        </div>
-
-        {/* Modal de Cancelación Destructiva (RF-07, TASK-39) */}
-        {isCancelModalOpen && mesocycle && (
-          <CancellationModal
-            isOpen={isCancelModalOpen}
-            onClose={() => setIsCancelModalOpen(false)}
-            activeMesocycleName={mesocycle.name}
-            onConfirm={async (reason) => {
-              await apiClient.mesocycles.cancelActive(reason);
-              setMesocycle(null);
-              queryClient.setQueryData(['mesocycle'], null);
-              await queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
-              setIsCancelModalOpen(false);
-            }}
-            onCancelSuccess={() => {
-              setMesocycle(null);
-              setIsCancelModalOpen(false);
-              queryClient.setQueryData(['mesocycle'], null);
-              queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
-            }}
-          />
-        )}
-
-        {/* Wizard V2 Modal para generación de nuevo ciclo si se abre (RF-03, RF-04, RF-05) */}
-        {isWizardOpen && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
-          >
-            <MesocycleWizardV2
-              isOpen={isWizardOpen}
-              onClose={() => setIsWizardOpen(false)}
-              onGenerate={handleGenerateMesocycleV2}
-              onSubmit={handleGenerateMesocycleV2}
-              isSubmitting={isGenerating}
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="progress-gradient h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.max(progressPercent, 4)}%` }}
             />
           </div>
+        </div>
+
+        {/* Botón de anulación / cancelación del ciclo activo (RF-07, TASK-39) */}
+        <div className="mt-4 pt-3 border-t border-line/60">
+          <button
+            type="button"
+            onClick={() => setIsCancelModalOpen(true)}
+            className="press touch-target min-h-[48px] w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold text-fatigue-text bg-fatigue/10 hover:bg-fatigue/20 border border-fatigue/30 transition-colors flex items-center justify-center gap-2"
+          >
+            <CalendarX className="w-4 h-4 text-fatigue-text" />
+            <span>Cancelar mesociclo actual</span>
+          </button>
+        </div>
+      </section>
+
+      {/* Week Selector in 4 columns grid (RF-02, T-16) */}
+      <section className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-bold text-content">Semanas</h2>
+          <span className="text-[11px] text-content-3 font-medium">
+            Semana <span className="font-mono font-bold text-content">{selectedWeekNumber}</span> de <span className="font-mono">{mesocycle.duration_weeks}</span>
+          </span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {mesocycle.weeks?.map((w) => {
+            const isSelected = w.week_number === selectedWeekNumber;
+            const isWeekDeload = Boolean(w.is_deload || w.week_number === 6);
+            return (
+              <button
+                key={w.id || w.week_number}
+                type="button"
+                aria-label={`Semana ${w.week_number}`}
+                onClick={() => setSelectedWeekNumber(w.week_number)}
+                className={`press touch-target min-h-12 min-h-[48px] rounded-xl text-[13px] font-bold transition-all duration-200 flex items-center justify-center gap-1 ${
+                  isSelected
+                    ? 'bg-amber text-ink shadow-lg shadow-amber/30'
+                    : 'bg-surface-1 text-content-2 border border-line'
+                }`}
+              >
+                <span>S</span>
+                <span className="font-mono">{w.week_number}</span>
+                {isWeekDeload && <Zap className="h-3 w-3 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Deload Notice Banner (RF-10, CA-10.2, T-16) */}
+      {selectedWeek?.is_deload && (
+        <div
+          data-testid="deload-banner"
+          className="animate-in fade-in slide-in-from-bottom-2 duration-200 flex gap-3 rounded-2xl border-l-4 border-amber bg-amber/10 p-3 shadow-lg shadow-amber/10"
+        >
+          <Zap className="h-7 w-7 shrink-0 text-amber" />
+          <div>
+            <p className="text-sm font-bold text-amber">Semana de Descarga (Deload)</p>
+            <p className="text-[13px] text-content-2">
+              Reducción de volumen (−40%) e intensidad (−10%) para facilitar la recuperación neuromuscular y supercompensación.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Movement Patterns Summary (RF-02) */}
+      {Object.keys(patternCounts).length > 0 && (
+        <section className="rounded-2xl border border-line bg-surface-1 p-3.5 shadow-lg shadow-brand/5">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-bold text-content flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-amber" />
+              Distribución de patrones
+            </span>
+            <span className="text-[11px] text-content-3 font-medium">Volumen muscular semanal</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.entries(patternCounts) as [MovementPattern, number][]).map(
+              ([pattern, count]) => (
+                <div
+                  key={pattern}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-2 border border-line text-xs font-medium text-content-2"
+                >
+                  <span>{patternLabels[pattern] || pattern}</span>
+                  <span className="text-[10px] font-bold text-content-3 bg-surface-1 px-1.5 py-0.5 rounded font-mono">
+                    {count} {count === 1 ? 'ejercicio' : 'ejercicios'}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Planned Sessions for the Selected Week in Lovable format (RF-02, T-16) */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-content">
+            Sesiones · Semana <span className="font-mono">{selectedWeekNumber}</span>
+          </h2>
+          <span className="text-[11px] text-content-3 font-medium">
+            {selectedWeek?.sessions?.length || 0} sesiones
+          </span>
+        </div>
+
+        {selectedWeek?.sessions && selectedWeek.sessions.length > 0 ? (
+          selectedWeek.sessions.map((session, idx) => {
+            const isSessionCompleted = Boolean(
+              (session as any).is_completed ||
+              (session as any).status === 'completed' ||
+              completedPlanIds.includes(session.id)
+            );
+            const Icon = getSessionIcon(session);
+
+            return (
+              <article
+                key={session.id}
+                style={{ animationDelay: `${idx * 60}ms` }}
+                className={`animate-in fade-in slide-in-from-bottom-2 duration-200 fill-mode-both rounded-2xl border p-3.5 shadow-lg ${
+                  isSessionCompleted
+                    ? 'border-success/40 bg-success/10 shadow-success/10'
+                    : 'border-line bg-surface-1 shadow-brand/5'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${
+                        isSessionCompleted
+                          ? 'bg-success/20 text-success'
+                          : 'bg-brand/15 text-brand-focus'
+                      }`}
+                    >
+                      {isSessionCompleted ? (
+                        <CheckCircle2 className="h-6 w-6 animate-in zoom-in-50 duration-300" />
+                      ) : (
+                        <Icon className="h-6 w-6" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[11px] uppercase tracking-wider text-content-3 font-semibold">
+                          Día {session.day_number}
+                        </p>
+                        {isSessionCompleted && (
+                          <span className="rounded-full bg-success/20 px-2 py-0.5 text-[10px] font-bold text-success">
+                            Completado
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="truncate text-sm font-bold text-content mt-0.5">
+                        {session.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    aria-label={`Ver detalles de sesión ${session.name}`}
+                    onClick={() => {
+                      onSelectSession?.(session);
+                      onNavigateToRoutineEditor?.(session.id);
+                    }}
+                    className="touch-target press min-h-[48px] min-w-[48px] inline-flex items-center justify-center p-2 rounded-xl text-content-3 hover:text-content hover:bg-surface-2 transition-colors shrink-0"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Chips de ejercicios */}
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {session.exercise_assignments && session.exercise_assignments.length > 0 ? (
+                    session.exercise_assignments.map((assign) => (
+                      <span
+                        key={assign.id}
+                        className="rounded-full bg-surface-2 px-2.5 py-1 text-[11px] text-content-2"
+                      >
+                        {assign.exercise?.name || 'Ejercicio'}
+                        {assign.is_swapped && (
+                          <span className="ml-1 text-amber">· Reemplazado</span>
+                        )}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-content-3 italic">
+                      Sin ejercicios asignados
+                    </span>
+                  )}
+                </div>
+
+                {/* Acciones de la sesión */}
+                {isSessionCompleted ? (
+                  <div className="mt-3 flex min-h-12 items-center justify-between gap-2 rounded-xl bg-success/15 px-3 py-2 text-sm font-bold text-success border border-success/20">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      Día Completado
+                    </span>
+                    {onStartSession && (
+                      <button
+                        type="button"
+                        onClick={() => onStartSession(session.id)}
+                        className="touch-target press min-h-[48px] text-xs font-semibold text-content-2 hover:text-content px-2 py-1 rounded-lg transition-colors"
+                      >
+                        Repetir
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  onStartSession && (
+                    <button
+                      type="button"
+                      onClick={() => onStartSession(session.id)}
+                      className="press touch-target min-h-12 min-h-[48px] mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-bold text-content shadow-lg shadow-brand/30 transition-all"
+                    >
+                      <Play className="h-4 w-4 fill-current" /> Iniciar Sesión
+                    </button>
+                  )
+                )}
+              </article>
+            );
+          })
+        ) : (
+          <p className="text-xs text-content-3 italic py-4 text-center">
+            No hay sesiones planificadas para esta semana.
+          </p>
         )}
-      </div>
+      </section>
+
+      {/* Modal de Cancelación Destructiva (RF-07, TASK-39) */}
+      {isCancelModalOpen && mesocycle && (
+        <CancellationModal
+          isOpen={isCancelModalOpen}
+          onClose={() => setIsCancelModalOpen(false)}
+          activeMesocycleName={mesocycle.name}
+          onConfirm={async (reason) => {
+            await apiClient.mesocycles.cancelActive(reason);
+            setMesocycle(null);
+            queryClient.setQueryData(['mesocycle'], null);
+            await queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
+            setIsCancelModalOpen(false);
+          }}
+          onCancelSuccess={() => {
+            setMesocycle(null);
+            setIsCancelModalOpen(false);
+            queryClient.setQueryData(['mesocycle'], null);
+            queryClient.invalidateQueries({ queryKey: ['mesocycle'] });
+          }}
+        />
+      )}
+
+      {/* Wizard V2 Modal para generación de nuevo ciclo si se abre (RF-03, RF-04, RF-05) */}
+      {isWizardOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <MesocycleWizardV2
+            isOpen={isWizardOpen}
+            onClose={() => setIsWizardOpen(false)}
+            onGenerate={handleGenerateMesocycleV2}
+            onSubmit={handleGenerateMesocycleV2}
+            isSubmitting={isGenerating}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 

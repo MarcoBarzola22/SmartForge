@@ -5,14 +5,14 @@ import { Loader2 } from "lucide-react"
 import { cn } from "cn"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent font-medium transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 text-center break-words leading-tight min-h-[48px] touch-target shrink-0 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
+  "group/button press inline-flex shrink-0 items-center justify-center rounded-xl border border-transparent font-medium transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 text-center break-words leading-tight min-h-[48px] touch-target shrink-0 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-5",
   {
     variants: {
       variant: {
         default:
-          "bg-brand-primary text-brand-contrast hover:bg-brand-primary/90 font-semibold shadow-sm",
+          "bg-brand-primary text-brand-contrast hover:bg-brand-primary/90 font-semibold shadow-lg shadow-brand/30",
         primary:
-          "bg-brand-primary text-brand-contrast hover:bg-brand-primary/90 font-semibold shadow-sm",
+          "bg-brand-primary text-brand-contrast hover:bg-brand-primary/90 font-semibold shadow-lg shadow-brand/30",
         secondary:
           "bg-surface-1 border-border-interactive text-content-primary hover:bg-surface-2 border shadow-sm",
         outline:
@@ -24,7 +24,11 @@ const buttonVariants = cva(
         danger:
           "bg-status-error-bg text-white hover:bg-status-error-bg/90 font-semibold shadow-sm",
         success:
-          "bg-status-success text-white hover:bg-status-success/90 font-semibold shadow-sm",
+          "bg-status-success text-white hover:bg-status-success/90 font-extrabold shadow-lg shadow-success/30",
+        amber:
+          "bg-amber text-ink hover:bg-amber/90 font-bold shadow-lg shadow-amber/30",
+        fatigue:
+          "bg-fatigue/15 text-fatigue-text hover:bg-fatigue/25 font-bold",
         link:
           "text-brand-primary underline-offset-4 hover:underline min-w-0 min-h-0",
       },
@@ -37,14 +41,16 @@ const buttonVariants = cva(
           "min-h-[48px] max-h-[64px] min-w-[120px] px-4 py-2 text-sm line-clamp-2 gap-2",
         lg:
           "min-h-[48px] max-h-[64px] min-w-[120px] px-6 py-2.5 text-base line-clamp-2 gap-2.5",
+        master:
+          "min-h-[56px] max-h-[64px] min-w-[120px] px-6 py-3.5 text-base font-extrabold line-clamp-2 gap-2",
         icon:
-          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-lg",
+          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-xl",
         "icon-xs":
-          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-lg",
+          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-xl",
         "icon-sm":
-          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-lg",
+          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-xl",
         "icon-lg":
-          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-lg",
+          "min-h-[48px] min-w-[48px] w-12 h-12 p-0 justify-center gap-0 rounded-xl",
       },
       fullWidth: {
         true: "w-full",
